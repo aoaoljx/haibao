@@ -67,8 +67,7 @@ export function renderPoster(canvas: HTMLCanvasElement, input: PosterRenderInput
 
   /**
    * AI 功能发布海报 - 深色科技风格
-   * 布局：Logo 顶部 → 标题区 → 功能点 → 底部标语
-   * 右侧：3D 图形
+   * 布局与功能发布海报完全一致，仅背景和颜色方案不同
    */
   function renderAiDark() {
     // 1. 深色渐变背景
@@ -82,57 +81,57 @@ export function renderPoster(canvas: HTMLCanvasElement, input: PosterRenderInput
     // 2. 科技感粒子装饰
     drawTechParticles();
 
-    // 3. Logo - 左上角，尺寸适中
+    // 3. Logo - 与功能发布海报相同位置
     ctx.save();
-    const logoW = 800;
-    const logoH = Math.round((208 / 660) * logoW);
-    ctx.drawImage(images.logoAi, 160, 120, logoW, logoH);
+    const logoW = 1495;
+    const logoH = 200;
+    ctx.drawImage(images.logoAi, 154, 135, logoW, logoH);
     ctx.restore();
 
-    // 4. 标题区 - Logo 下方，留足间距
-    const titleStartY = 420;
+    // 4. 标题区 - 与功能发布海报相同位置
     const titleBlue = val("titleBlue") || "AI 辅助";
     const titleDark = val("titleDark") || "生成测试用例";
 
-    // 第一行标题 - 白色大字
-    ctx.font = font(180, 900, false);
+    // 第一行标题 - 白色大字，位置 y=930
+    ctx.font = font(titleDark ? 174 : 184, 800, true);
     ctx.fillStyle = "#ffffff";
-    ctx.fillText(titleBlue, 160, titleStartY);
+    ctx.fillText(titleBlue, 160, 930);
 
-    // 第二行标题 - 蓝紫渐变
-    const title2Y = titleStartY + 220;
-    const gradient = ctx.createLinearGradient(
-      160, title2Y - 140,
-      160 + ctx.measureText(titleDark).width, title2Y - 140
-    );
-    gradient.addColorStop(0, "#7026f4");
-    gradient.addColorStop(0.5, "#258bf8");
-    gradient.addColorStop(1, "#50c7da");
-    ctx.fillStyle = gradient;
-    ctx.fillText(titleDark, 160, title2Y);
+    // 第二行标题 - 蓝紫渐变，位置 y=930
+    if (titleDark) {
+      const tw = ctx.measureText(titleBlue).width;
+      const gradient = ctx.createLinearGradient(
+        160 + tw + 45, 930 - 140,
+        160 + tw + 45 + ctx.measureText(titleDark).width, 930 - 140
+      );
+      gradient.addColorStop(0, "#7026f4");
+      gradient.addColorStop(0.5, "#258bf8");
+      gradient.addColorStop(1, "#50c7da");
+      ctx.fillStyle = gradient;
+      ctx.fillText(titleDark, 160 + tw + 45, 930);
+    }
 
-    // 5. 副标题
-    const subtitle = val("subtitle") || "邀您抢先体验";
-    ctx.font = font(80, 500, false);
-    ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
-    ctx.fillText(subtitle, 160, title2Y + 160);
+    // 5. 副标题 - 位置 y=1285
+    if (val("subtitle")) {
+      ctx.font = font(130, 800, true);
+      ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
+      ctx.fillText(val("subtitle"), 160, 1285);
+    }
 
-    // 6. 功能点 - 标题下方，与标题有足够间距
-    const featureStartY = title2Y + 280;
-    drawFeaturePointsDark(160, featureStartY, 1100);
+    // 6. 功能点 - 与功能发布海报相同位置
+    drawFeaturePointsDark(1180, 430);
 
-    // 7. 底部提示语
-    const notice = val("notice") || "让您专注于业务创造，而非重复工作";
-    if (notice) {
-      ctx.font = font(56, 400, false);
-      ctx.fillStyle = "rgba(255, 255, 255, 0.55)";
-      ctx.fillText(notice, 160, 1700);
+    // 7. 底部提示语 - 位置 y=1725
+    if (val("notice")) {
+      ctx.font = font(72, 800, false);
+      ctx.fillStyle = "rgba(255, 255, 255, 0.6)";
+      ctx.fillText(val("notice"), 320, 1725);
     }
 
     // 8. 底部标语
     drawBottomTagline();
 
-    // 9. 右侧图形
+    // 9. 右侧图形 - 与功能发布海报相同位置
     drawVisualDark();
   }
 
@@ -162,49 +161,42 @@ export function renderPoster(canvas: HTMLCanvasElement, input: PosterRenderInput
   }
 
   /**
-   * 深色风格功能点 - 左侧排列，带图标
-   * @param startX 起始 X 坐标
-   * @param startY 起始 Y 坐标
-   * @param maxHeight 最大高度
+   * 深色风格功能点 - 与功能发布海报相同布局
    */
-  function drawFeaturePointsDark(startX: number, startY: number, maxHeight: number) {
+  function drawFeaturePointsDark(startY: number, maxHeight: number) {
     const rows = copy.featurePoints.map((point) => point.trim()).filter(Boolean);
     if (!rows.length) return;
 
     const count = rows.length;
-    const lineGap = Math.min(160, Math.floor(maxHeight / Math.max(count, 1)));
-    const iconSize = 60;
-    const textSize = 60;
+    const textSize = Math.max(
+      46,
+      Math.min(70, Math.floor(((maxHeight - Math.max(0, count - 1) * 28) / count) * 0.58))
+    );
+    const lineGap = Math.max(96, Math.min(178, Math.floor(maxHeight / count)));
+    let y = startY + textSize;
 
-    let y = startY;
     for (const row of rows) {
       const [label, ...rest] = row.split(/[:：]/);
       const text = rest.join("：");
 
-      // 图标圆圈
+      // 圆点 - 与功能发布海报相同
+      ctx.fillStyle = "rgba(112, 38, 244, 0.8)";
       ctx.beginPath();
-      ctx.arc(startX + 30, y + 30, iconSize / 2, 0, Math.PI * 2);
-      ctx.strokeStyle = "rgba(112, 38, 244, 0.6)";
-      ctx.lineWidth = 2;
-      ctx.stroke();
-
-      ctx.beginPath();
-      ctx.arc(startX + 30, y + 30, iconSize / 4, 0, Math.PI * 2);
-      ctx.fillStyle = "rgba(37, 139, 248, 0.4)";
+      ctx.arc(168, y - textSize * 0.38, Math.max(8, textSize * 0.16), 0, Math.PI * 2);
       ctx.fill();
 
       // 标签文字
-      ctx.font = font(textSize, 700, false);
       ctx.fillStyle = "#ffffff";
+      ctx.font = font(textSize, 800, false);
       const prefix = text ? `${label}：` : row;
-      ctx.fillText(prefix, startX + 80, y + 45);
+      ctx.fillText(prefix, 218, y);
 
       // 描述文字
       if (text) {
         const lw = ctx.measureText(prefix).width;
-        ctx.font = font(textSize * 0.8, 400, false);
-        ctx.fillStyle = "rgba(255, 255, 255, 0.65)";
-        fitTextDark(text, startX + 80 + lw + 16, y + 42, 1200 - lw, textSize * 0.8);
+        ctx.font = font(textSize, 500, false);
+        ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
+        fitTextDark(text, 218 + lw + 18, y, 1760 - lw, textSize);
       }
 
       y += lineGap;
@@ -213,7 +205,7 @@ export function renderPoster(canvas: HTMLCanvasElement, input: PosterRenderInput
 
   function fitTextDark(text: string, x: number, y: number, maxWidth: number, px: number) {
     let value = text;
-    ctx.font = font(px, 400, false);
+    ctx.font = font(px, 500, false);
     while (ctx.measureText(value).width > maxWidth && value.length > 3) {
       value = value.slice(0, -2);
     }
@@ -226,17 +218,19 @@ export function renderPoster(canvas: HTMLCanvasElement, input: PosterRenderInput
     ctx.fillText("GLOBAL PERSPECTIVE.  SMART TECHNOLOGY.  CLEAR ADVANTAGE.", 160, 1820);
   }
 
+  /**
+   * 右侧图形 - 与功能发布海报相同位置
+   */
   function drawVisualDark() {
     const visual = getVisualByKey(input.visualKey);
     const aiImg = input.aiGeneratedImage;
-
-    const darkBox = { x: 2200, y: 450, w: 1400, h: 1100 };
+    const box = visual.posterBounds; // 使用相同的 posterBounds
 
     if (aiImg) {
       ctx.save();
       ctx.shadowColor = "rgba(112, 38, 244, 0.5)";
       ctx.shadowBlur = 60;
-      ctx.drawImage(aiImg, darkBox.x, darkBox.y, darkBox.w, darkBox.h);
+      ctx.drawImage(aiImg, box.x, box.y, box.w, box.h);
       ctx.restore();
       return;
     }
@@ -245,7 +239,7 @@ export function renderPoster(canvas: HTMLCanvasElement, input: PosterRenderInput
     ctx.save();
     ctx.shadowColor = "rgba(37, 139, 248, 0.4)";
     ctx.shadowBlur = 50;
-    ctx.drawImage(img, darkBox.x, darkBox.y, darkBox.w, darkBox.h);
+    ctx.drawImage(img, box.x, box.y, box.w, box.h);
     ctx.restore();
   }
 
