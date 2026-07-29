@@ -3,6 +3,7 @@ import { FLUX_PROVIDER, createFluxProvider } from "./flux";
 import { GEMINI_PROVIDER, createGeminiProvider } from "./gemini";
 import { GPT_IMAGE_PROVIDER, createGptImageProvider } from "./gptImage";
 import { IDEOGRAM_PROVIDER, createIdeogramProvider } from "./ideogram";
+import { QWEN_PROVIDER, createQwenProvider } from "./qwen";
 import { SDXL_PROVIDER, createSdxlProvider } from "./sdxl";
 import type { ImageProviderAdapter, ImageProviderDefinition, ImageProviderId } from "./types";
 
@@ -12,7 +13,8 @@ export const IMAGE_PROVIDER_IDS = [
   "flux",
   "ideogram",
   "comfyui",
-  "sdxl"
+  "sdxl",
+  "qwen"
 ] as const satisfies readonly ImageProviderId[];
 
 export const IMAGE_PROVIDER_DEFINITIONS: Record<ImageProviderId, ImageProviderDefinition> = {
@@ -21,7 +23,8 @@ export const IMAGE_PROVIDER_DEFINITIONS: Record<ImageProviderId, ImageProviderDe
   flux: FLUX_PROVIDER,
   ideogram: IDEOGRAM_PROVIDER,
   comfyui: COMFYUI_PROVIDER,
-  sdxl: SDXL_PROVIDER
+  sdxl: SDXL_PROVIDER,
+  qwen: QWEN_PROVIDER
 };
 
 const IMAGE_PROVIDER_FACTORIES: Record<ImageProviderId, () => ImageProviderAdapter> = {
@@ -30,7 +33,8 @@ const IMAGE_PROVIDER_FACTORIES: Record<ImageProviderId, () => ImageProviderAdapt
   flux: createFluxProvider,
   ideogram: createIdeogramProvider,
   comfyui: createComfyUiProvider,
-  sdxl: createSdxlProvider
+  sdxl: createSdxlProvider,
+  qwen: createQwenProvider
 };
 
 export function isImageProviderId(value: string): value is ImageProviderId {

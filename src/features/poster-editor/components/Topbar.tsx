@@ -10,8 +10,8 @@ export function Topbar({ mode, onModeChange, onExport }: TopbarProps) {
   return (
     <header className="topbar">
       <div>
-        <h1>AI品牌主视觉生成平台</h1>
-        <p>运营文案保持手动编辑，AI 仅负责右侧 2.5D 品牌主视觉</p>
+        <h1>效能平台功能发布海报模版</h1>
+        <p>在线编辑文案，一键生成专属宣传海报</p>
       </div>
       <div className="actions">
         <button

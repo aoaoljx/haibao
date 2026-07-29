@@ -30,6 +30,7 @@ interface EditorPanelProps {
     value: string
   ) => void;
   onGraphicOverlayTextChange: (field: keyof GraphicOverlayText, value: string) => void;
+  onGenerateVisual: () => void;
 }
 
 const graphicSourceOptions: Array<{ label: string; value: GraphicSource }> = [
@@ -39,6 +40,56 @@ const graphicSourceOptions: Array<{ label: string; value: GraphicSource }> = [
 ];
 
 const providerOptions = listImageProviderDefinitions();
+
+/**
+ * ProviderConfigInput 必须定义在组件外部，
+ * 否则每次父组件渲染都会重新创建该组件，导致输入框失焦。
+ */
+interface ProviderConfigInputProps {
+  config: ImageProviderConfig;
+  field: ProviderConfigField;
+  onChange: (field: keyof ImageProviderConfig | `extra.${string}`, value: string) => void;
+}
+
+function ProviderConfigInput({ config, field, onChange }: ProviderConfigInputProps) {
+  const value = getProviderConfigValue(config, field.key);
+  const commonProps = {
+    value,
+    placeholder: field.placeholder || "",
+    required: field.required,
+    onChange: (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+      onChange(field.key, event.target.value)
+  };
+
+  return (
+    <label>
+      {field.label}
+      {field.type === "textarea" ? (
+        <textarea {...commonProps} />
+      ) : (
+        <input type={toInputType(field.type)} {...commonProps} />
+      )}
+      {field.description ? <span className="field-hint">{field.description}</span> : null}
+    </label>
+  );
+}
+
+function getProviderConfigValue(
+  config: ImageProviderConfig,
+  field: keyof ImageProviderConfig | `extra.${string}`
+) {
+  if (field.startsWith("extra.")) {
+    return String(config.extra?.[field.slice("extra.".length)] || "");
+  }
+
+  const value = config[field as keyof ImageProviderConfig];
+  return value === undefined || value === null ? "" : String(value);
+}
+
+function toInputType(type: ProviderConfigField["type"]) {
+  if (type === "password" || type === "url" || type === "number") return type;
+  return "text";
+}
 
 export function EditorPanel({
   state,
@@ -53,7 +104,8 @@ export function EditorPanel({
   onKeywordsChange,
   onProviderChange,
   onProviderConfigFieldChange,
-  onGraphicOverlayTextChange
+  onGraphicOverlayTextChange,
+  onGenerateVisual
 }: EditorPanelProps) {
   const providerFields = getManualApiConfigFields(state.providerConfig.provider);
 
@@ -189,6 +241,31 @@ export function EditorPanel({
                 />
               ))}
             </div>
+
+            {/* AI 生成按钮 */}
+            <div className="generate-section">
+              {state.aiGeneratedDataUrl ? (
+                <div className="ai-preview-thumb">
+                  <img src={state.aiGeneratedDataUrl} alt="AI 生成预览" />
+                  <span className="ai-preview-label">已生成</span>
+                </div>
+              ) : null}
+              <button
+                type="button"
+                className="generate-btn"
+                disabled={state.isGenerating}
+                onClick={onGenerateVisual}
+              >
+                {state.isGenerating ? (
+                  <>
+                    <span className="generate-spinner" />
+                    生成中…
+                  </>
+                ) : (
+                  <>✨ 生成图形</>
+                )}
+              </button>
+            </div>
           </div>
         ) : null}
       </div>
@@ -226,50 +303,4 @@ export function EditorPanel({
       </div>
     </aside>
   );
-}
-
-interface ProviderConfigInputProps {
-  config: ImageProviderConfig;
-  field: ProviderConfigField;
-  onChange: (field: keyof ImageProviderConfig | `extra.${string}`, value: string) => void;
-}
-
-function ProviderConfigInput({ config, field, onChange }: ProviderConfigInputProps) {
-  const value = getProviderConfigValue(config, field.key);
-  const commonProps = {
-    value,
-    placeholder: field.placeholder || "",
-    required: field.required,
-    onChange: (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
-      onChange(field.key, event.target.value)
-  };
-
-  return (
-    <label>
-      {field.label}
-      {field.type === "textarea" ? (
-        <textarea {...commonProps} />
-      ) : (
-        <input type={toInputType(field.type)} {...commonProps} />
-      )}
-      {field.description ? <span className="field-hint">{field.description}</span> : null}
-    </label>
-  );
-}
-
-function getProviderConfigValue(
-  config: ImageProviderConfig,
-  field: keyof ImageProviderConfig | `extra.${string}`
-) {
-  if (field.startsWith("extra.")) {
-    return String(config.extra?.[field.slice("extra.".length)] || "");
-  }
-
-  const value = config[field as keyof ImageProviderConfig];
-  return value === undefined || value === null ? "" : String(value);
-}
-
-function toInputType(type: ProviderConfigField["type"]) {
-  if (type === "password" || type === "url" || type === "number") return type;
-  return "text";
 }

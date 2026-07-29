@@ -35,12 +35,13 @@ export function PosterEditorPage() {
         copy: editor.state.copy,
         visualKey: editor.state.visualKey,
         graphicText: editor.state.graphicText,
-        images: assets.images
+        images: assets.images,
+        aiGeneratedImage: editor.state.aiGeneratedImage
       });
       const url = canvasRef.current.toDataURL("image/png");
       setExportState({ url, filename });
       triggerDownload(url, filename);
-      editor.setStatus("PNG 已生成。若未自动下载，请点击下方“下载 PNG”。", "ok");
+      editor.setStatus("PNG 已生成。若未自动下载，请点击下方【下载 PNG】。", "ok");
     } catch {
       editor.setStatus("导出失败：请刷新页面后重试，或确认当前页面通过本地服务地址访问。", "error");
     }
@@ -72,6 +73,7 @@ export function PosterEditorPage() {
           onProviderChange={editor.updateProvider}
           onProviderConfigFieldChange={editor.updateProviderConfigField}
           onGraphicOverlayTextChange={editor.updateGraphicOverlayText}
+          onGenerateVisual={editor.generateVisual}
         />
 
         <section className="stage">

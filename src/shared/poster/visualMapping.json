@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0.0",
   "positioning": {
-    "name": "AI品牌主视觉生成平台",
+    "name": "效能平台功能发布海报模版",
     "aiScope": "AI只负责生成或匹配右侧2.5D品牌主视觉；左侧文案由运营手动编辑；当前版本不接任何AI接口。"
   },
   "canvas": {

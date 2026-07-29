@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState, useEffect } from "react";
 import type { ImageProviderConfig, ImageProviderId } from "@providers";
 import {
   clonePosterCopy,
@@ -12,6 +12,7 @@ import type {
   VisualKey,
   VisualTextValueMap
 } from "@/shared/poster/types";
+import { generateVisualImage } from "@/services/visual-generation";
 
 export type GraphicSource = "ai" | "library" | "upload";
 
@@ -37,6 +38,53 @@ export interface PosterEditorState {
   graphicOverlayText: GraphicOverlayText;
   statusMessage: string;
   statusKind: "" | "ok" | "error";
+  aiGeneratedImage: HTMLImageElement | null;
+  aiGeneratedDataUrl: string | null;
+  isGenerating: boolean;
+}
+
+const STORAGE_KEY = "idevflow-poster-provider-config";
+
+/** 从 localStorage 加载保存的配置 */
+function loadSavedProviderConfig(): ImageProviderConfig {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      // 确保结构完整
+      return {
+        provider: parsed.provider || "gpt-image",
+        apiKey: parsed.apiKey || "",
+        baseUrl: parsed.baseUrl || "",
+        model: parsed.model || "",
+        workflowId: parsed.workflowId || "",
+        apiVersion: parsed.apiVersion || "",
+        timeoutMs: parsed.timeoutMs || 120000,
+        extra: parsed.extra || {}
+      };
+    }
+  } catch (error) {
+    console.warn("加载保存的配置失败:", error);
+  }
+  return {
+    provider: "gpt-image",
+    apiKey: "",
+    baseUrl: "",
+    model: "",
+    workflowId: "",
+    apiVersion: "",
+    timeoutMs: 120000,
+    extra: {}
+  };
+}
+
+/** 保存配置到 localStorage */
+function saveProviderConfig(config: ImageProviderConfig): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+  } catch (error) {
+    console.warn("保存配置失败:", error);
+  }
 }
 
 export function usePosterEditor() {
@@ -65,16 +113,10 @@ export function usePosterEditor() {
     feature: deriveKeywords(posterPresets.feature.copy),
     ai: deriveKeywords(posterPresets.ai.copy)
   });
-  const [providerConfig, setProviderConfig] = useState<ImageProviderConfig>({
-    provider: "gpt-image",
-    apiKey: "",
-    baseUrl: "",
-    model: "",
-    workflowId: "",
-    apiVersion: "",
-    timeoutMs: 120000,
-    extra: {}
-  });
+  
+  // 从 localStorage 加载配置，而不是使用硬编码默认值
+  const [providerConfig, setProviderConfig] = useState<ImageProviderConfig>(loadSavedProviderConfig);
+  
   const [keywordTouchedByMode, setKeywordTouchedByMode] = useState<Record<PosterMode, boolean>>({
     feature: false,
     ai: false
@@ -97,6 +139,24 @@ export function usePosterEditor() {
   });
   const [statusMessage, setStatusMessage] = useState("");
   const [statusKind, setStatusKind] = useState<"" | "ok" | "error">("");
+  const [aiGeneratedImageByMode, setAiGeneratedImageByMode] = useState<
+    Record<PosterMode, HTMLImageElement | null>
+  >({
+    feature: null,
+    ai: null
+  });
+  const [aiGeneratedDataUrlByMode, setAiGeneratedDataUrlByMode] = useState<
+    Record<PosterMode, string | null>
+  >({
+    feature: null,
+    ai: null
+  });
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  // 每次配置变更时自动保存到 localStorage
+  useEffect(() => {
+    saveProviderConfig(providerConfig);
+  }, [providerConfig]);
 
   const state: PosterEditorState = useMemo(
     () => ({
@@ -111,7 +171,10 @@ export function usePosterEditor() {
       providerConfig,
       graphicOverlayText: graphicOverlayTextByMode[mode],
       statusMessage,
-      statusKind
+      statusKind,
+      aiGeneratedImage: aiGeneratedImageByMode[mode],
+      aiGeneratedDataUrl: aiGeneratedDataUrlByMode[mode],
+      isGenerating
     }),
     [
       copy,
@@ -126,7 +189,10 @@ export function usePosterEditor() {
       statusKind,
       statusMessage,
       uploadedFileNameByMode,
-      visualKey
+      visualKey,
+      aiGeneratedImageByMode,
+      aiGeneratedDataUrlByMode,
+      isGenerating
     ]
   );
 
@@ -241,13 +307,12 @@ export function usePosterEditor() {
     [mode]
   );
 
+  // 切换模型时保留已有配置，只更新 provider 字段
   const updateProvider = useCallback((provider: ImageProviderId) => {
     setProviderConfig((current) => ({
       ...current,
-      provider,
-      model: "",
-      workflowId: "",
-      apiVersion: ""
+      provider
+      // 不再清空 model、workflowId、apiVersion，保留用户之前的配置
     }));
     setStatusMessage("");
     setStatusKind("");
@@ -297,6 +362,76 @@ export function usePosterEditor() {
     [mode]
   );
 
+  const generateVisual = useCallback(async () => {
+    if (isGenerating) return;
+
+    // 校验 API Key
+    if (!providerConfig.apiKey?.trim()) {
+      setStatus("请先配置模型接口的 API Key。", "error");
+      return;
+    }
+
+    setIsGenerating(true);
+    setStatus("正在调用模型生成图形，请稍候…", "");
+
+    try {
+      const currentKeywords = keywordTouchedByMode[mode]
+        ? keywordsByMode[mode]
+        : deriveKeywords(copy);
+
+      const result = await generateVisualImage({
+        mode,
+        titleBlue: copy.titleBlue,
+        titleDark: copy.titleDark,
+        featurePoints: copy.featurePoints,
+        keywords: currentKeywords,
+        graphicText: graphicOverlayTextByMode[mode],
+        providerConfig
+      });
+
+      // 将 base64 转为 HTMLImageElement
+      const img = new Image();
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = () => reject(new Error("生成的图片加载失败"));
+        img.src = result.image.dataUrl;
+      });
+
+      setAiGeneratedImageByMode((current) => ({
+        ...current,
+        [mode]: img
+      }));
+      setAiGeneratedDataUrlByMode((current) => ({
+        ...current,
+        [mode]: result.image.dataUrl
+      }));
+
+      // 自动切换到 AI 生成来源
+      setGraphicSourceByMode((current) => ({
+        ...current,
+        [mode]: "ai"
+      }));
+
+      setStatus(
+        `图形生成成功！（模型：${result.image.model || providerConfig.provider}）`,
+        "ok"
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "图形生成失败，请重试。";
+      setStatus(message, "error");
+    } finally {
+      setIsGenerating(false);
+    }
+  }, [
+    isGenerating,
+    providerConfig,
+    mode,
+    keywordTouchedByMode,
+    keywordsByMode,
+    copy,
+    graphicOverlayTextByMode
+  ]);
+
   const setStatus = useCallback((message: string, kind: "" | "ok" | "error" = "") => {
     setStatusMessage(message);
     setStatusKind(kind);
@@ -317,6 +452,7 @@ export function usePosterEditor() {
     updateProvider,
     updateProviderConfigField,
     updateGraphicOverlayText,
+    generateVisual,
     setStatus
   };
 }

@@ -16,6 +16,8 @@ export type PosterImages = {
 } & Record<VisualKey, HTMLImageElement>;
 
 export interface PosterRenderInput {
+  /** AI 生成的右侧图形，存在时覆盖素材图库中的对应图片 */
+  aiGeneratedImage?: HTMLImageElement | null;
   mode: PosterMode;
   copy: PosterCopy;
   visualKey: VisualKey;
@@ -166,8 +168,16 @@ export function renderPoster(canvas: HTMLCanvasElement, input: PosterRenderInput
 
   function drawVisual() {
     const visual = getVisualByKey(input.visualKey);
-    const img = images[visual.key];
+    const aiImg = input.aiGeneratedImage;
     const box = visual.posterBounds;
+
+    if (aiImg) {
+      // AI 生成的图片覆盖整个图形区域，不绘制文字叠加层
+      ctx.drawImage(aiImg, box.x, box.y, box.w, box.h);
+      return;
+    }
+
+    const img = images[visual.key];
     ctx.drawImage(img, box.x, box.y, box.w, box.h);
     drawGraphicText(visual, img);
   }

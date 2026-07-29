@@ -7,7 +7,12 @@ export {
   isImageProviderId,
   listImageProviderDefinitions
 } from "./registry";
-export { createPngResult, DEFAULT_IMAGE_SIZE, DEFAULT_PROVIDER_TIMEOUT_MS } from "./shared";
+export {
+  createPngResult,
+  DEFAULT_IMAGE_SIZE,
+  DEFAULT_PROVIDER_TIMEOUT_MS,
+  proxyUrl
+} from "./shared";
 export type {
   GenerateImageInput,
   GenerateImageResult,

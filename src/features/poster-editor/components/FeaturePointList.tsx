@@ -21,7 +21,7 @@ export function FeaturePointList({
       </div>
       <div id="featurePoints">
         {points.map((point, index) => (
-          <div className="point-row" key={`${index}-${point.slice(0, 8)}`}>
+          <div className="point-row" key={index}>
             <label>
               {`功能点 ${index + 1}`}
               <input value={point} onChange={(event) => onUpdate(index, event.target.value)} />

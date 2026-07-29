@@ -4,7 +4,8 @@ export type ImageProviderId =
   | "flux"
   | "ideogram"
   | "comfyui"
-  | "sdxl";
+  | "sdxl"
+  | "qwen";
 
 export type ProviderKind = "hosted-api" | "self-hosted-api";
 
