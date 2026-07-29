@@ -12,6 +12,7 @@ export type PosterImages = {
   featureBg: HTMLImageElement;
   aiBg: HTMLImageElement;
   logo: HTMLImageElement;
+  logoAi: HTMLImageElement;
   productBadge: HTMLImageElement;
 } & Record<VisualKey, HTMLImageElement>;
 
@@ -35,14 +36,14 @@ export function renderPoster(canvas: HTMLCanvasElement, input: PosterRenderInput
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   if (mode === "feature") {
-    // 功能发布海报 - 保持原样
+    // 功能发布海报 - 使用原 logo
     const bg = images.featureBg;
     ctx.drawImage(bg, 0, 0, 3840, 1920);
     ctx.drawImage(images.logo, 154, 135, 1495, 200);
     ctx.drawImage(images.productBadge, 160, 470, 585, 198);
     renderFeature();
   } else {
-    // AI 功能发布海报 - 深色科技风格
+    // AI 功能发布海报 - 使用新 logo（白色版本）
     renderAiDark();
   }
 
@@ -83,14 +84,11 @@ export function renderPoster(canvas: HTMLCanvasElement, input: PosterRenderInput
     // 2. 绘制科技感粒子效果（装饰）
     drawTechParticles();
 
-    // 3. 绘制 Logo - 新 logo 尺寸 660x208，调整位置和大小
+    // 3. 绘制 Logo - 新 logo（白色版本）尺寸 660x208，调整位置和大小
     ctx.save();
-    // 使用 source-over 混合模式，保持 logo 原色
-    ctx.globalCompositeOperation = "source-over";
-    // 放大 logo 到合适大小
     const logoWidth = 1000;
     const logoHeight = Math.round((208 / 660) * logoWidth);
-    ctx.drawImage(images.logo, 154, 100, logoWidth, logoHeight);
+    ctx.drawImage(images.logoAi, 154, 100, logoWidth, logoHeight);
     ctx.restore();
 
     // 4. 绘制标题 - 白色大字 + 蓝紫渐变
@@ -139,7 +137,6 @@ export function renderPoster(canvas: HTMLCanvasElement, input: PosterRenderInput
   /** 绘制科技感粒子背景 */
   function drawTechParticles() {
     ctx.save();
-    // 绘制一些装饰性的光点和线条
     const particles = [
       { x: 3200, y: 600, r: 4, color: "rgba(112, 38, 244, 0.6)" },
       { x: 3400, y: 800, r: 3, color: "rgba(37, 139, 248, 0.5)" },
@@ -155,7 +152,6 @@ export function renderPoster(canvas: HTMLCanvasElement, input: PosterRenderInput
       ctx.fill();
     }
 
-    // 绘制一些连接线
     ctx.strokeStyle = "rgba(112, 38, 244, 0.15)";
     ctx.lineWidth = 1;
     ctx.beginPath();
@@ -183,20 +179,17 @@ export function renderPoster(canvas: HTMLCanvasElement, input: PosterRenderInput
       const [label, ...rest] = row.split(/[:：]/);
       const text = rest.join("：");
 
-      // 绘制图标圆圈
       ctx.beginPath();
       ctx.arc(startX + 40, y + 40, iconSize / 2, 0, Math.PI * 2);
       ctx.strokeStyle = "rgba(112, 38, 244, 0.6)";
       ctx.lineWidth = 3;
       ctx.stroke();
 
-      // 绘制图标内部装饰
       ctx.beginPath();
       ctx.arc(startX + 40, y + 40, iconSize / 4, 0, Math.PI * 2);
       ctx.fillStyle = "rgba(37, 139, 248, 0.4)";
       ctx.fill();
 
-      // 绘制文字
       ctx.font = font(textSize, 700, false);
       ctx.fillStyle = "#ffffff";
       const prefix = text ? `${label}：` : row;
@@ -233,9 +226,7 @@ export function renderPoster(canvas: HTMLCanvasElement, input: PosterRenderInput
   function drawVisualDark() {
     const visual = getVisualByKey(input.visualKey);
     const aiImg = input.aiGeneratedImage;
-    const box = visual.posterBounds;
 
-    // 调整图形位置到右侧居中
     const darkBox = {
       x: 2100,
       y: 400,
@@ -244,7 +235,6 @@ export function renderPoster(canvas: HTMLCanvasElement, input: PosterRenderInput
     };
 
     if (aiImg) {
-      // AI 生成的图片 - 添加发光效果
       ctx.save();
       ctx.shadowColor = "rgba(112, 38, 244, 0.5)";
       ctx.shadowBlur = 60;

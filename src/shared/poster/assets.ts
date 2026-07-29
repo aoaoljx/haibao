@@ -2,6 +2,7 @@ export const posterAssetSources = {
   featureBg: "/poster-assets/feature-background.png",
   aiBg: "/poster-assets/ai-background.png",
   logo: "/poster-assets/logo.png",
+  logoAi: "/poster-assets/logo-ai.png",
   productBadge: "/poster-assets/product-badge.png",
   graphic1: "/poster-assets/poster-graphic-1-clean-v3.png",
   graphic2: "/poster-assets/poster-graphic-2-clean-v3.png",
