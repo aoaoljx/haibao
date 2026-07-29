@@ -1,0 +1,16 @@
+{
+  "title_blue": "代码在线编辑",
+  "title_dark": "功能发布",
+  "feature_points": [
+    {"label": "代码在线编辑", "text": "轻量代码变更，在线编辑高效完成"},
+    {"label": "代码评论", "text": "评审信息不杂乱，标签化管理一目了然"},
+    {"label": "代码审核", "text": "代码审核自动匹配，代码质量更可控"}
+  ],
+  "visual_hint": "auto",
+  "graphic_texts": {
+    "graphic1": {
+      "brand": "iDevflow",
+      "action": "提交"
+    }
+  }
+}

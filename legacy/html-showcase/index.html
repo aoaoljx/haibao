@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI品牌主视觉生成平台</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main>
+    <header class="topbar">
+      <div>
+        <h1>AI品牌主视觉生成平台</h1>
+        <p>运营文案保持手动编辑，AI 仅负责右侧 2.5D 品牌主视觉</p>
+      </div>
+      <div class="actions">
+        <button id="featureTab" class="active" type="button">正常功能发布</button>
+        <button id="aiTab" type="button">AI 功能发布</button>
+        <button id="downloadBtn" type="button">导出 PNG</button>
+      </div>
+    </header>
+    <p id="statusText" class="status" role="status"></p>
+
+    <section class="workspace">
+      <aside class="panel">
+        <div class="panel-section">
+          <h2>内容修改</h2>
+          <label>蓝色标题<input id="titleBlue" value="代码在线编辑"></label>
+          <label>深色标题<input id="titleDark" value="功能发布"></label>
+          <label>副标题<input id="subtitle" value=""></label>
+          <label>提示语/底部文案<input id="notice" value=""></label>
+          <label>标签<input id="tag" value="beta版"></label>
+        </div>
+        <div class="panel-section" id="featurePointEditor">
+          <div class="section-title">
+            <h2>功能点</h2>
+            <button id="addPointBtn" type="button">添加</button>
+          </div>
+          <div id="featurePoints"></div>
+        </div>
+        <div class="panel-section">
+          <h2>右侧图形</h2>
+          <label>图形样式
+            <select id="visualHint">
+              <option value="auto">自动匹配</option>
+              <option value="graphic1">图形一</option>
+              <option value="graphic2">图形二</option>
+              <option value="graphic3">图形三</option>
+              <option value="graphic4">图形四</option>
+              <option value="graphic5">图形五</option>
+            </select>
+          </label>
+          <div id="graphicTextEditor" class="graphic-text-editor"></div>
+          <p class="hint">选择“自动匹配”时，会根据左侧标题、功能点和底部文案选择同风格 2.5D 图形，并自动填充可编辑图形文字。</p>
+        </div>
+      </aside>
+
+      <section class="stage">
+        <canvas id="poster" width="3840" height="1920"></canvas>
+        <div id="exportPreview" class="export-preview" hidden>
+          <div class="section-title">
+            <h2>导出图片</h2>
+            <button id="closeExportPreview" type="button">关闭</button>
+          </div>
+          <p>如果浏览器没有自动下载，可以在下方图片上右键另存为 PNG。</p>
+          <a id="exportDownloadLink" class="download-link" href="#" download hidden>下载 PNG</a>
+          <img id="exportImage" alt="导出的海报 PNG">
+        </div>
+      </section>
+    </section>
+  </main>
+  <script src="showcase.js?v=20260618-clean-v3"></script>
+</body>
+</html>

@@ -1,0 +1,328 @@
+{
+  "schemaVersion": "1.0.0",
+  "positioning": {
+    "name": "AI品牌主视觉生成平台",
+    "aiScope": "AI只负责生成或匹配右侧2.5D品牌主视觉；左侧文案由运营手动编辑；当前版本不接任何AI接口。"
+  },
+  "canvas": {
+    "width": 3840,
+    "height": 1920
+  },
+  "fallback": {
+    "feature": "graphic1",
+    "ai": "graphic5"
+  },
+  "matchPriority": {
+    "feature": ["graphic3", "graphic4", "graphic5", "graphic2", "graphic1"],
+    "ai": ["graphic4", "graphic2", "graphic3", "graphic5"]
+  },
+  "visuals": [
+    {
+      "key": "graphic1",
+      "name": "图形一",
+      "assetPath": "/poster-assets/poster-graphic-1-clean-v3.png",
+      "sourceAssetPath": "/poster-assets/poster-graphic-1.png",
+      "description": "蓝色2.5D代码提交与工作流卡片主视觉，适合代码编辑、评审、提交、审核类功能。",
+      "preferredModes": ["feature"],
+      "naturalSize": {
+        "width": 1530,
+        "height": 1232
+      },
+      "posterBounds": {
+        "x": 2050,
+        "y": 505,
+        "w": 1650,
+        "h": 1329
+      },
+      "keywords": ["代码", "编辑", "评审", "审核", "提交", "合并", "工作流", "devflow"],
+      "promptHints": ["代码编辑器", "流程卡片", "蓝白科技感", "悬浮面板", "右侧品牌主视觉"],
+      "editableTextFields": [
+        {
+          "id": "brand",
+          "label": "顶部标题",
+          "role": "brand",
+          "defaultValue": "iDevflow",
+          "maxLength": 12
+        },
+        {
+          "id": "action",
+          "label": "按钮文字",
+          "role": "action",
+          "defaultValue": "提交",
+          "maxLength": 4
+        }
+      ],
+      "renderSlots": [
+        {
+          "fieldId": "brand",
+          "x": 390,
+          "y": 242,
+          "anchor": "baseline",
+          "fontSize": 92,
+          "maxWidth": 555,
+          "align": "left",
+          "styleToken": "embossedWhiteItalic"
+        },
+        {
+          "fieldId": "action",
+          "x": 407,
+          "y": 826,
+          "anchor": "baseline",
+          "fontSize": 54,
+          "maxWidth": 190,
+          "align": "center",
+          "styleToken": "embossedWhite"
+        }
+      ]
+    },
+    {
+      "key": "graphic2",
+      "name": "图形二",
+      "assetPath": "/poster-assets/poster-graphic-2-clean-v3.png",
+      "sourceAssetPath": "/poster-assets/poster-graphic-2.png",
+      "description": "蓝色2.5D登录与账号认证主视觉，适合登录、权限、账号、安全认证类功能。",
+      "preferredModes": ["feature", "ai"],
+      "naturalSize": {
+        "width": 1560,
+        "height": 1264
+      },
+      "posterBounds": {
+        "x": 2050,
+        "y": 505,
+        "w": 1640,
+        "h": 1329
+      },
+      "keywords": ["登录", "单点", "sso", "认证", "账号", "权限", "安全", "鉴权"],
+      "promptHints": ["登录表单", "账号安全", "蓝白玻璃面板", "2.5D终端", "右侧品牌主视觉"],
+      "editableTextFields": [
+        {
+          "id": "brand",
+          "label": "顶部标题",
+          "role": "brand",
+          "defaultValue": "iDevflow",
+          "maxLength": 12
+        },
+        {
+          "id": "action",
+          "label": "按钮文字",
+          "role": "action",
+          "defaultValue": "登录",
+          "maxLength": 4
+        }
+      ],
+      "renderSlots": [
+        {
+          "fieldId": "brand",
+          "x": 420,
+          "y": 246,
+          "anchor": "baseline",
+          "fontSize": 94,
+          "maxWidth": 570,
+          "align": "left",
+          "styleToken": "embossedWhiteItalic"
+        },
+        {
+          "fieldId": "action",
+          "x": 428,
+          "y": 832,
+          "anchor": "baseline",
+          "fontSize": 54,
+          "maxWidth": 195,
+          "align": "center",
+          "styleToken": "embossedWhite"
+        }
+      ]
+    },
+    {
+      "key": "graphic3",
+      "name": "图形三",
+      "assetPath": "/poster-assets/poster-graphic-3-clean-v3.png",
+      "sourceAssetPath": "/poster-assets/poster-graphic-3.png",
+      "description": "蓝色2.5D路标、交付与发布验证主视觉，适合需求、版本、交付、发布验证类功能。",
+      "preferredModes": ["feature", "ai"],
+      "naturalSize": {
+        "width": 2344,
+        "height": 1538
+      },
+      "posterBounds": {
+        "x": 1874,
+        "y": 636,
+        "w": 2344,
+        "h": 1538
+      },
+      "keywords": ["交付", "验证", "路标", "版本", "需求", "发布", "上线", "迭代"],
+      "promptHints": ["路标卡片", "发布按钮", "验证状态", "多层级流程", "蓝色2.5D业务看板"],
+      "editableTextFields": [
+        {
+          "id": "milestone",
+          "label": "左侧卡片",
+          "role": "card",
+          "defaultValue": "路标版本",
+          "maxLength": 8
+        },
+        {
+          "id": "delivery",
+          "label": "右侧卡片",
+          "role": "card",
+          "defaultValue": "敏捷交付",
+          "maxLength": 8
+        },
+        {
+          "id": "publish",
+          "label": "按钮文字",
+          "role": "action",
+          "defaultValue": "点击发布",
+          "maxLength": 6
+        },
+        {
+          "id": "status",
+          "label": "状态标签",
+          "role": "status",
+          "defaultValue": "验证中",
+          "maxLength": 4
+        }
+      ],
+      "renderSlots": [
+        {
+          "fieldId": "milestone",
+          "x": 718,
+          "y": 477,
+          "anchor": "center",
+          "fontSize": 86,
+          "maxWidth": 250,
+          "align": "center",
+          "styleToken": "stackedWhite"
+        },
+        {
+          "fieldId": "delivery",
+          "x": 1265,
+          "y": 563,
+          "anchor": "center",
+          "fontSize": 82,
+          "maxWidth": 250,
+          "align": "center",
+          "styleToken": "stackedLightBlue"
+        },
+        {
+          "fieldId": "publish",
+          "x": 1100,
+          "y": 861,
+          "anchor": "baseline",
+          "fontSize": 46,
+          "maxWidth": 225,
+          "align": "center",
+          "styleToken": "plainWhite"
+        },
+        {
+          "fieldId": "status",
+          "x": 1554,
+          "y": 263,
+          "anchor": "baseline",
+          "fontSize": 48,
+          "maxWidth": 155,
+          "align": "center",
+          "styleToken": "plainBlue"
+        }
+      ]
+    },
+    {
+      "key": "graphic4",
+      "name": "图形四",
+      "assetPath": "/poster-assets/poster-graphic-4-clean-v3.png",
+      "sourceAssetPath": "/poster-assets/poster-graphic-4.png",
+      "description": "AI搜索、代码助手与智能检查主视觉，适合代码助手、搜索、检查、修复和智能编码类功能。",
+      "preferredModes": ["feature", "ai"],
+      "naturalSize": {
+        "width": 1818,
+        "height": 1396
+      },
+      "posterBounds": {
+        "x": 2262,
+        "y": 384,
+        "w": 1818,
+        "h": 1396
+      },
+      "keywords": ["搜索", "检查", "修复", "coder", "代码助手", "编码", "AI", "智能编码"],
+      "promptHints": ["AI标识", "代码搜索框", "智能检查", "蓝色光效", "2.5D技术助手"],
+      "editableTextFields": [
+        {
+          "id": "ai",
+          "label": "AI 标识",
+          "role": "badge",
+          "defaultValue": "AI",
+          "maxLength": 4
+        },
+        {
+          "id": "coder",
+          "label": "搜索框标题",
+          "role": "title",
+          "defaultValue": "DF Coder",
+          "maxLength": 10
+        }
+      ],
+      "renderSlots": [
+        {
+          "fieldId": "ai",
+          "x": 477,
+          "y": 159,
+          "anchor": "baseline",
+          "fontSize": 62,
+          "maxWidth": 170,
+          "align": "center",
+          "styleToken": "plainBlueItalic"
+        },
+        {
+          "fieldId": "coder",
+          "x": 727,
+          "y": 164,
+          "anchor": "baseline",
+          "fontSize": 60,
+          "maxWidth": 405,
+          "align": "left",
+          "styleToken": "plainBlue"
+        }
+      ]
+    },
+    {
+      "key": "graphic5",
+      "name": "图形五",
+      "assetPath": "/poster-assets/poster-graphic-5-clean-v3.png",
+      "sourceAssetPath": "/poster-assets/poster-graphic-5.png",
+      "description": "AI生成与测试用例主视觉，适合智能生成、测试用例、文档分析、问答总结类AI功能。",
+      "preferredModes": ["ai"],
+      "naturalSize": {
+        "width": 2077,
+        "height": 1338
+      },
+      "posterBounds": {
+        "x": 2080,
+        "y": 416,
+        "w": 2077,
+        "h": 1338
+      },
+      "keywords": ["ai", "智能", "测试", "用例", "文档", "分析", "生成", "助手", "问答", "总结"],
+      "promptHints": ["AI生成卡片", "测试用例标签", "智能分析面板", "蓝紫渐变光效", "2.5D品牌主视觉"],
+      "editableTextFields": [
+        {
+          "id": "title",
+          "label": "底部标签",
+          "role": "title",
+          "defaultValue": "测试用例",
+          "maxLength": 8
+        }
+      ],
+      "renderSlots": [
+        {
+          "fieldId": "title",
+          "x": 328,
+          "y": 1058,
+          "anchor": "baseline",
+          "fontSize": 72,
+          "maxWidth": 420,
+          "align": "center",
+          "styleToken": "embossedWhite"
+        }
+      ]
+    }
+  ]
+}
