@@ -81,11 +81,14 @@ export function renderPoster(canvas: HTMLCanvasElement, input: PosterRenderInput
     // 2. 科技感粒子装饰
     drawTechParticles();
 
-    // 3. Logo - 与功能发布海报相同位置
+    // 3. Logo - 保持原始比例，不拉伸变形
     ctx.save();
-    const logoW = 1495;
-    const logoH = 200;
-    ctx.drawImage(images.logoAi, 154, 135, logoW, logoH);
+    const logoAiNaturalW = images.logoAi.naturalWidth || 660;
+    const logoAiNaturalH = images.logoAi.naturalHeight || 208;
+    const logoAiScale = 200 / logoAiNaturalH; // 高度对齐到 200px
+    const logoAiW = Math.round(logoAiNaturalW * logoAiScale);
+    const logoAiH = 200;
+    ctx.drawImage(images.logoAi, 154, 135, logoAiW, logoAiH);
     ctx.restore();
 
     // 4. 标题区 - 与功能发布海报相同位置
@@ -111,27 +114,30 @@ export function renderPoster(canvas: HTMLCanvasElement, input: PosterRenderInput
       ctx.fillText(titleDark, 160 + tw + 45, 930);
     }
 
-    // 5. 副标题 - 位置 y=1285
+    // 5. 产品标签 - 与功能发布海报相同位置
+    ctx.drawImage(images.productBadge, 160, 470, 585, 198);
+
+    // 6. 副标题 - 位置 y=1285
     if (val("subtitle")) {
       ctx.font = font(130, 800, true);
       ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
       ctx.fillText(val("subtitle"), 160, 1285);
     }
 
-    // 6. 功能点 - 与功能发布海报相同位置
+    // 7. 功能点 - 与功能发布海报相同位置
     drawFeaturePointsDark(1180, 430);
 
-    // 7. 底部提示语 - 位置 y=1725
+    // 8. 底部提示语 - 位置 y=1725
     if (val("notice")) {
       ctx.font = font(72, 800, false);
       ctx.fillStyle = "rgba(255, 255, 255, 0.6)";
       ctx.fillText(val("notice"), 320, 1725);
     }
 
-    // 8. 底部标语
+    // 9. 底部标语
     drawBottomTagline();
 
-    // 9. 右侧图形 - 与功能发布海报相同位置
+    // 10. 右侧图形 - 与功能发布海报相同位置
     drawVisualDark();
   }
 
