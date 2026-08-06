@@ -3,9 +3,12 @@ import {
   API_PROXY_ENTRIES,
   buildViteProxyConfig,
   proxyTargetOrigin,
+  resolveConfiguredProviders,
   stripProxyPrefix,
-  toProxyPath
+  toProxyPath,
+  type ViteProxyEntryConfig
 } from "./apiProxyMap";
+import { IMAGE_PROVIDER_IDS } from "./registry";
 
 describe("stripProxyPrefix", () => {
   it("剥掉前缀后还原出目标 host 上的真实路径", () => {
@@ -82,6 +85,93 @@ describe("URL 改写与转发规则闭环", () => {
       expect(config[entry.proxyPrefix].target).toBe(proxyTargetOrigin(entry));
       expect(entry.proxyPrefix.startsWith("/")).toBe(true);
       expect(entry.proxyPrefix.endsWith("/")).toBe(false);
+    }
+  });
+});
+
+/** 记录 configure 钩子实际设置了哪些请求头 */
+function captureInjectedHeaders(config: ViteProxyEntryConfig) {
+  const headers: Record<string, string> = {};
+  config.configure?.({
+    on: (_event, listener) => {
+      listener({ setHeader: (name, value) => { headers[name] = value; } });
+    }
+  });
+  return headers;
+}
+
+describe("密钥注入", () => {
+  it("配了 Key 时在转发阶段注入鉴权头", () => {
+    const config = buildViteProxyConfig({ DASHSCOPE_API_KEY: "sk-secret" });
+    expect(captureInjectedHeaders(config["/api/dashscope"])).toEqual({
+      Authorization: "Bearer sk-secret"
+    });
+  });
+
+  it("没配 Key 时不注入，也不生成空头", () => {
+    const config = buildViteProxyConfig({});
+    expect(config["/api/dashscope"].configure).toBeUndefined();
+  });
+
+  it("空白字符串视为未配置", () => {
+    const config = buildViteProxyConfig({ DASHSCOPE_API_KEY: "   " });
+    expect(config["/api/dashscope"].configure).toBeUndefined();
+  });
+
+  it("按各家要求的头格式注入，不是一律 Bearer", () => {
+    const config = buildViteProxyConfig({
+      OPENAI_API_KEY: "sk-openai",
+      GEMINI_API_KEY: "goog-key",
+      BFL_API_KEY: "bfl-key"
+    });
+
+    expect(captureInjectedHeaders(config["/api/openai"])).toEqual({
+      Authorization: "Bearer sk-openai"
+    });
+    // Google 用自己的头名，且不带 Bearer 前缀
+    expect(captureInjectedHeaders(config["/api/gemini"])).toEqual({
+      "x-goog-api-key": "goog-key"
+    });
+    expect(captureInjectedHeaders(config["/api/flux"])).toEqual({ "x-key": "bfl-key" });
+  });
+
+  it("所有密钥环境变量都不带 VITE_ 前缀——带了就会被打进客户端包", () => {
+    // 这条是安全边界：VITE_ 前缀的变量会被静态替换进 dist，等于公开密钥
+    for (const entry of API_PROXY_ENTRIES) {
+      expect(entry.apiKeyEnvVar.startsWith("VITE_"), entry.apiKeyEnvVar).toBe(false);
+    }
+  });
+});
+
+describe("resolveConfiguredProviders", () => {
+  it("只返回配了密钥的 Provider", () => {
+    expect(resolveConfiguredProviders({ DASHSCOPE_API_KEY: "sk-a" })).toEqual(["qwen"]);
+    expect(resolveConfiguredProviders({ OPENAI_API_KEY: "sk-b" })).toEqual(["gpt-image"]);
+  });
+
+  it("一个都没配时返回空，交由界面提示去填 .env", () => {
+    expect(resolveConfiguredProviders({})).toEqual([]);
+  });
+
+  it("空白值不算配置过", () => {
+    expect(resolveConfiguredProviders({ DASHSCOPE_API_KEY: "  " })).toEqual([]);
+  });
+
+  it("多个密钥时全部返回且不重复", () => {
+    const result = resolveConfiguredProviders({
+      DASHSCOPE_API_KEY: "sk-a",
+      OPENAI_API_KEY: "sk-b",
+      GEMINI_API_KEY: "sk-c"
+    });
+    expect(result).toEqual(["qwen", "gpt-image", "gemini"]);
+    expect(new Set(result).size).toBe(result.length);
+  });
+
+  it("每个登记项声明的 Provider 都是合法 ID", () => {
+    for (const entry of API_PROXY_ENTRIES) {
+      for (const provider of entry.providers) {
+        expect(IMAGE_PROVIDER_IDS).toContain(provider);
+      }
     }
   });
 });

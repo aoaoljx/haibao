@@ -2,12 +2,9 @@ import type { PosterEditorState } from "../hooks/usePosterEditor";
 import { graphicTextValue } from "@/shared/poster/graphicText";
 import { getVisualByKey } from "@/shared/poster/visualMapping";
 import {
+  configuredProviders,
   getImageProviderDefinition,
-  getManualApiConfigFields,
-  listImageProviderDefinitions,
-  type ImageProviderConfig,
-  type ImageProviderId,
-  type ProviderConfigField
+  type ImageProviderId
 } from "@providers";
 import type { GraphicSource, PosterCopy, VisualAsset, VisualKey } from "@/shared/poster/types";
 import { FeaturePointList } from "./FeaturePointList";
@@ -24,10 +21,6 @@ interface EditorPanelProps {
   onUploadedFileChange: (file: File | null) => void;
   onKeywordsChange: (value: string) => void;
   onProviderChange: (provider: ImageProviderId) => void;
-  onProviderConfigFieldChange: (
-    field: keyof ImageProviderConfig | `extra.${string}`,
-    value: string
-  ) => void;
   onGraphicTextFieldChange: (fieldId: string, value: string) => void;
   onRemoveBackgroundChange: (value: boolean) => void;
   onGenerateVisual: () => void;
@@ -39,57 +32,13 @@ const graphicSourceOptions: Array<{ label: string; value: GraphicSource }> = [
   { label: "上传图片", value: "upload" }
 ];
 
-const providerOptions = listImageProviderDefinitions();
-
 /**
- * ProviderConfigInput 必须定义在组件外部，
- * 否则每次父组件渲染都会重新创建该组件，导致输入框失焦。
+ * 只列出 .env 里真正配了密钥的模型。
+ *
+ * 这样不会再出现「下拉里选得到、点了才报错」——能选中的一定是能用的。
+ * 在模块级求值：构建时注入的常量，运行期不会变。
  */
-interface ProviderConfigInputProps {
-  config: ImageProviderConfig;
-  field: ProviderConfigField;
-  onChange: (field: keyof ImageProviderConfig | `extra.${string}`, value: string) => void;
-}
-
-function ProviderConfigInput({ config, field, onChange }: ProviderConfigInputProps) {
-  const value = getProviderConfigValue(config, field.key);
-  const commonProps = {
-    value,
-    placeholder: field.placeholder || "",
-    required: field.required,
-    onChange: (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
-      onChange(field.key, event.target.value)
-  };
-
-  return (
-    <label>
-      {field.label}
-      {field.type === "textarea" ? (
-        <textarea {...commonProps} />
-      ) : (
-        <input type={toInputType(field.type)} {...commonProps} />
-      )}
-      {field.description ? <span className="field-hint">{field.description}</span> : null}
-    </label>
-  );
-}
-
-function getProviderConfigValue(
-  config: ImageProviderConfig,
-  field: keyof ImageProviderConfig | `extra.${string}`
-) {
-  if (field.startsWith("extra.")) {
-    return String(config.extra?.[field.slice("extra.".length)] || "");
-  }
-
-  const value = config[field as keyof ImageProviderConfig];
-  return value === undefined || value === null ? "" : String(value);
-}
-
-function toInputType(type: ProviderConfigField["type"]) {
-  if (type === "password" || type === "url" || type === "number") return type;
-  return "text";
-}
+const readyProviders = configuredProviders().map(getImageProviderDefinition);
 
 export function EditorPanel({
   state,
@@ -103,12 +52,10 @@ export function EditorPanel({
   onUploadedFileChange,
   onKeywordsChange,
   onProviderChange,
-  onProviderConfigFieldChange,
   onGraphicTextFieldChange,
   onRemoveBackgroundChange,
   onGenerateVisual
 }: EditorPanelProps) {
-  const providerFields = getManualApiConfigFields(state.providerConfig.provider);
   const providerDefinition = getImageProviderDefinition(state.providerConfig.provider);
   const activeVisual = getVisualByKey(state.visualKey);
   const activeValues = state.graphicText[state.visualKey];
@@ -229,32 +176,33 @@ export function EditorPanel({
               />
             </label>
             <div className="provider-panel">
-              <h3>模型接口配置</h3>
-              <label>
-                图片模型
-                <select
-                  value={state.providerConfig.provider}
-                  onChange={(event) => onProviderChange(event.target.value as ImageProviderId)}
-                >
-                  {providerOptions.map((provider) => (
-                    <option value={provider.id} key={provider.id}>
-                      {provider.displayName}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              {providerFields.map((field) => (
-                <ProviderConfigInput
-                  config={state.providerConfig}
-                  field={field}
-                  key={field.key}
-                  onChange={onProviderConfigFieldChange}
-                />
-              ))}
-              <p className="field-hint">
-                接口配置（含 API Key）保存在本机浏览器，方便下次直接使用；
-                公用电脑请注意清理。
-              </p>
+              <h3>图片模型</h3>
+              {readyProviders.length ? (
+                <>
+                  <label>
+                    使用模型
+                    <select
+                      value={state.providerConfig.provider}
+                      onChange={(event) => onProviderChange(event.target.value as ImageProviderId)}
+                    >
+                      {readyProviders.map((provider) => (
+                        <option value={provider.id} key={provider.id}>
+                          {provider.displayName}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <p className="field-hint">
+                    密钥由服务端从 .env 读取，不经过浏览器，因此这里无需填写。
+                    要新增或更换模型，编辑项目根目录的 .env 后重启服务。
+                  </p>
+                </>
+              ) : (
+                <p className="field-hint field-hint-warn">
+                  还没有可用的图片模型。请复制 .env.example 为 .env，
+                  填入至少一个 API Key（例如 DASHSCOPE_API_KEY），然后重启服务。
+                </p>
+              )}
               {providerDefinition.supportsTransparentBackground ? null : (
                 <label className="checkbox-option">
                   <input

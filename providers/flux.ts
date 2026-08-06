@@ -1,4 +1,3 @@
-import { apiKeyField, optionalBaseUrlField, modelField, timeoutField } from "./configFields";
 import { createDeferredImageProvider } from "./shared";
 import type { ImageProviderAdapter, ImageProviderDefinition } from "./types";
 
@@ -8,7 +7,6 @@ export const FLUX_PROVIDER: ImageProviderDefinition = {
   kind: "hosted-api",
   supportsTransparentBackground: false,
   description: "Flux-compatible image provider adapter. API details are configured by operators.",
-  configFields: [apiKeyField, optionalBaseUrlField, modelField, timeoutField]
 };
 
 export function createFluxProvider(): ImageProviderAdapter {

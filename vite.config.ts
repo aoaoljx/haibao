@@ -1,29 +1,42 @@
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
 import { fileURLToPath } from "node:url";
-import { buildViteProxyConfig } from "./providers/apiProxyMap";
+import { buildViteProxyConfig, resolveConfiguredProviders } from "./providers/apiProxyMap";
 
 /**
- * dev 与 preview 共用同一份转发规则。
- * 前端 `proxyUrl()` 改写出的路径、这里的转发规则、以及生产环境 Nginx 的 location
- * 三者必须一致，否则模型调用会静默 404。三处都以 providers/apiProxyMap.ts 为准。
+ * 模型密钥从 .env 读取，只存在于本进程内。
+ *
+ * loadEnv 的第三个参数传空串表示不按前缀过滤，这样能读到 DASHSCOPE_API_KEY 这类
+ * **无前缀**变量。无前缀是刻意的：vite 只把 VITE_ 前缀的变量静态替换进客户端包，
+ * 所以密钥不会出现在 dist 里，也不会经过浏览器——转发时由下面的 proxy 注入请求头。
+ *
+ * 前端能拿到的只有 __CONFIGURED_PROVIDERS__，即「哪些模型已配好可用」，
+ * 由密钥是否存在自动推导，不含密钥本身。
  */
-const apiProxy = buildViteProxyConfig();
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), "");
 
-export default defineConfig({
-  server: {
-    host: "127.0.0.1",
-    port: 3000,
-    proxy: apiProxy
-  },
-  preview: {
-    host: "127.0.0.1",
-    port: 4173,
-    proxy: apiProxy
-  },
-  resolve: {
-    alias: {
-      "@": fileURLToPath(new URL("./src", import.meta.url)),
-      "@providers": fileURLToPath(new URL("./providers", import.meta.url))
+  // dev 与 preview 共用同一份转发规则，避免"开发能用、预览 404"
+  const apiProxy = buildViteProxyConfig(env);
+
+  return {
+    define: {
+      __CONFIGURED_PROVIDERS__: JSON.stringify(resolveConfiguredProviders(env))
+    },
+    server: {
+      host: "127.0.0.1",
+      port: 3000,
+      proxy: apiProxy
+    },
+    preview: {
+      host: "127.0.0.1",
+      port: 4173,
+      proxy: apiProxy
+    },
+    resolve: {
+      alias: {
+        "@": fileURLToPath(new URL("./src", import.meta.url)),
+        "@providers": fileURLToPath(new URL("./providers", import.meta.url))
+      }
     }
-  }
+  };
 });

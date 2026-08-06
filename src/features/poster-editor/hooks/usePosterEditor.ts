@@ -1,5 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { ImageProviderConfig, ImageProviderId } from "@providers";
+import {
+  configuredProviders,
+  defaultProvider,
+  isImageProviderId,
+  providerExtras,
+  type ImageProviderConfig,
+  type ImageProviderId
+} from "@providers";
 import {
   clonePosterCopy,
   createDefaultGraphicTextState,
@@ -38,48 +45,33 @@ export interface PosterEditorState {
   isGenerating: boolean;
 }
 
-const STORAGE_KEY = "idevflow-poster-provider-config";
+/** 记住上次选的模型。只是个偏好，不含任何凭据。 */
+const SELECTED_PROVIDER_KEY = "idevflow-poster-selected-provider";
 
-/** 从 localStorage 加载保存的配置 */
-function loadSavedProviderConfig(): ImageProviderConfig {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      // 确保结构完整
-      return {
-        provider: parsed.provider || "gpt-image",
-        apiKey: parsed.apiKey || "",
-        baseUrl: parsed.baseUrl || "",
-        model: parsed.model || "",
-        workflowId: parsed.workflowId || "",
-        apiVersion: parsed.apiVersion || "",
-        timeoutMs: parsed.timeoutMs || 120000,
-        extra: parsed.extra || {}
-      };
-    }
-  } catch (error) {
-    console.warn("加载保存的配置失败:", error);
-  }
+/**
+ * 组装当前的 Provider 配置。
+ *
+ * 密钥不在这里——它由 vite 服务端从 .env 读取并在转发时注入请求头。
+ * 这里只有「用哪个模型」和一些非机密调节项。
+ */
+function buildProviderConfig(provider: ImageProviderId): ImageProviderConfig {
   return {
-    provider: "gpt-image",
-    apiKey: "",
-    baseUrl: "",
-    model: "",
-    workflowId: "",
-    apiVersion: "",
-    timeoutMs: 120000,
-    extra: {}
+    provider,
+    extra: providerExtras(provider)
   };
 }
 
-/** 保存配置到 localStorage */
-function saveProviderConfig(config: ImageProviderConfig): void {
+/** 读取上次选择；已失效（比如 .env 里删了对应的 Key）时回落到默认 */
+function loadSelectedProvider(): ImageProviderId {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
-  } catch (error) {
-    console.warn("保存配置失败:", error);
+    const saved = localStorage.getItem(SELECTED_PROVIDER_KEY);
+    if (saved && isImageProviderId(saved) && configuredProviders().includes(saved)) {
+      return saved;
+    }
+  } catch {
+    // localStorage 不可用时按默认走，不打断使用
   }
+  return defaultProvider();
 }
 
 export function usePosterEditor() {
@@ -114,10 +106,11 @@ export function usePosterEditor() {
     feature: deriveKeywords(posterPresets.feature.copy),
     ai: deriveKeywords(posterPresets.ai.copy)
   });
-  
-  // 从 localStorage 加载配置，而不是使用硬编码默认值
-  const [providerConfig, setProviderConfig] = useState<ImageProviderConfig>(loadSavedProviderConfig);
-  
+
+  // 只记「用哪个模型」，密钥在服务端
+  const [selectedProvider, setSelectedProvider] = useState<ImageProviderId>(loadSelectedProvider);
+  const providerConfig = useMemo(() => buildProviderConfig(selectedProvider), [selectedProvider]);
+
   const [keywordTouchedByMode, setKeywordTouchedByMode] = useState<Record<PosterMode, boolean>>({
     feature: false,
     ai: false
@@ -143,10 +136,14 @@ export function usePosterEditor() {
   });
   const [isGenerating, setIsGenerating] = useState(false);
 
-  // 每次配置变更时自动保存到 localStorage
+  // 记住模型选择，方便下次打开。存的只是个 Provider ID，不含凭据。
   useEffect(() => {
-    saveProviderConfig(providerConfig);
-  }, [providerConfig]);
+    try {
+      localStorage.setItem(SELECTED_PROVIDER_KEY, selectedProvider);
+    } catch {
+      // 隐私模式等场景下写不进去，不影响使用
+    }
+  }, [selectedProvider]);
 
   // 卸载时释放上传图片占用的 object URL。
   // 用 ref 读最新值 + 空依赖，避免把仍在使用的图提前 revoke 掉。
@@ -333,47 +330,11 @@ export function usePosterEditor() {
     [mode]
   );
 
-  // 切换模型时保留已有配置，只更新 provider 字段
   const updateProvider = useCallback((provider: ImageProviderId) => {
-    setProviderConfig((current) => ({
-      ...current,
-      provider
-      // 不再清空 model、workflowId、apiVersion，保留用户之前的配置
-    }));
+    setSelectedProvider(provider);
     setStatusMessage("");
     setStatusKind("");
   }, []);
-
-  const updateProviderConfigField = useCallback(
-    (field: keyof ImageProviderConfig | `extra.${string}`, value: string) => {
-      setProviderConfig((current) => {
-        if (field.startsWith("extra.")) {
-          return {
-            ...current,
-            extra: {
-              ...current.extra,
-              [field.slice("extra.".length)]: value
-            }
-          };
-        }
-
-        if (field === "timeoutMs") {
-          return {
-            ...current,
-            timeoutMs: value ? Number(value) : undefined
-          };
-        }
-
-        return {
-          ...current,
-          [field]: value
-        };
-      });
-      setStatusMessage("");
-      setStatusKind("");
-    },
-    []
-  );
 
   /**
    * 修改当前图形的某个文字槽位。
@@ -401,9 +362,12 @@ export function usePosterEditor() {
   const generateVisual = useCallback(async () => {
     if (isGenerating) return;
 
-    // 校验 API Key
-    if (!providerConfig.apiKey?.trim()) {
-      setStatus("请先配置模型接口的 API Key。", "error");
+    // 密钥在服务端，前端只能检查这个模型有没有被配置过
+    if (!configuredProviders().includes(providerConfig.provider)) {
+      setStatus(
+        "还没有可用的图片模型。请在项目根目录的 .env 里填入对应的 API Key（参考 .env.example），然后重启服务。",
+        "error"
+      );
       return;
     }
 
@@ -500,7 +464,6 @@ export function usePosterEditor() {
     updateUploadedFile,
     updateKeywords,
     updateProvider,
-    updateProviderConfigField,
     updateGraphicTextField,
     updateRemoveBackground: setRemoveBackground,
     generateVisual,

@@ -1,4 +1,3 @@
-import { baseUrlField, optionalApiKeyField, optionalModelField, timeoutField, workflowIdField } from "./configFields";
 import { createDeferredImageProvider } from "./shared";
 import type { ImageProviderAdapter, ImageProviderDefinition } from "./types";
 
@@ -8,7 +7,6 @@ export const SDXL_PROVIDER: ImageProviderDefinition = {
   kind: "self-hosted-api",
   supportsTransparentBackground: false,
   description: "SDXL-compatible provider adapter. Endpoint and model are configured by operators.",
-  configFields: [baseUrlField, optionalModelField, workflowIdField, optionalApiKeyField, timeoutField]
 };
 
 export function createSdxlProvider(): ImageProviderAdapter {

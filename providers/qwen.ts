@@ -1,4 +1,3 @@
-import { apiKeyField, optionalBaseUrlField, modelField, timeoutField } from "./configFields";
 import {
   createPngResult,
   normalizeImageInput,
@@ -10,8 +9,7 @@ import type {
   GenerateImageResult,
   ImageProviderAdapter,
   ImageProviderConfig,
-  ImageProviderDefinition,
-  ProviderConfigField
+  ImageProviderDefinition
 } from "./types";
 
 /**
@@ -43,24 +41,6 @@ const QWEN_SUPPORTED_SIZES: string[] = [
   "1080×1920"
 ];
 
-const promptExtendField: ProviderConfigField = {
-  key: "extra.promptExtend",
-  label: "智能改写 Prompt",
-  type: "text",
-  required: false,
-  placeholder: "true",
-  description: "是否开启智能改写。设为 true 时模型自动优化提示词，设为 false 则使用原始提示词。"
-};
-
-const watermarkField: ProviderConfigField = {
-  key: "extra.watermark",
-  label: "添加水印",
-  type: "text",
-  required: false,
-  placeholder: "false",
-  description: "是否在图像右下角添加 Qwen-Image 水印，默认 false。"
-};
-
 export const QWEN_PROVIDER: ImageProviderDefinition = {
   id: "qwen",
   displayName: "千问百炼 (Qwen-Image)",
@@ -69,30 +49,7 @@ export const QWEN_PROVIDER: ImageProviderDefinition = {
   supportsTransparentBackground: false,
   description:
     "阿里云百炼平台千问文生图（Qwen-Image）Provider，支持 qwen-image-max / qwen-image-turbo / qwen-image 及 2.0 系列模型，通过 DashScope API 异步调用。",
-  defaultModel: DEFAULT_MODEL,
-  configFields: [
-    {
-      ...apiKeyField,
-      label: "DashScope API Key",
-      placeholder: "sk-xxxxxxxxxxxxxxxxxxxxxxxx",
-      description: "在阿里云百炼平台获取的 API Key，仅用于当前图片生成请求。"
-    },
-    {
-      ...optionalBaseUrlField,
-      placeholder: DEFAULT_BASE_URL,
-      description: "DashScope API 地址，一般无需修改。"
-    },
-    {
-      ...modelField,
-      required: false,
-      placeholder: DEFAULT_MODEL,
-      description:
-        "模型名称，可选：qwen-image-max、qwen-image-turbo、qwen-image、qwen-image-2.0-max、qwen-image-2.0-turbo、qwen-image-2.0。"
-    },
-    timeoutField,
-    promptExtendField,
-    watermarkField
-  ]
+  defaultModel: DEFAULT_MODEL
 };
 
 /** 将标准 ImageSize 映射为千问支持的尺寸（导出仅为可测） */
@@ -145,19 +102,20 @@ async function downloadImageAsBase64(url: string): Promise<string> {
 async function pollTaskResult(
   baseUrl: string,
   taskId: string,
-  apiKey: string,
   timeoutMs: number
 ): Promise<{ imageUrl: string; actualPrompt?: string }> {
   const deadline = Date.now() + timeoutMs;
   const pollUrl = `${baseUrl.replace(/\/+$/, "")}/tasks/${taskId}`;
 
   while (Date.now() < deadline) {
-    const response = await fetch(proxyUrl(pollUrl), {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${apiKey}`
-      }
-    });
+    // 不带 Authorization：密钥由 vite 代理从 .env 注入
+    const response = await fetch(proxyUrl(pollUrl), { method: "GET" });
+
+    if (response.status === 401 || response.status === 403) {
+      throw new Error(
+        "DashScope 拒绝了请求（未授权）。请检查 .env 里的 DASHSCOPE_API_KEY 是否正确，改完需重启服务。"
+      );
+    }
 
     if (!response.ok) {
       throw new Error(
@@ -203,14 +161,9 @@ export function createQwenProvider(): ImageProviderAdapter {
       const normalizedInput = normalizeImageInput(input);
       const normalizedConfig = normalizeProviderConfig(config);
 
-      const apiKey = normalizedConfig.apiKey;
-      if (!apiKey) {
-        throw new Error(
-          "千问百炼 Provider 需要配置 DashScope API Key，请在界面中填写。"
-        );
-      }
-
-      const baseUrl = (normalizedConfig.baseUrl || DEFAULT_BASE_URL).replace(/\/+$/, "");
+      // 这里不校验也不携带 API Key：密钥由 vite 服务端从 .env 读取并在转发时注入。
+      // 浏览器发出的请求本身不带凭据，鉴权失败会以 401 的形式回来。
+      const baseUrl = DEFAULT_BASE_URL;
       const model = normalizedConfig.model || DEFAULT_MODEL;
       const timeoutMs = normalizedConfig.timeoutMs || 120000;
 
@@ -249,12 +202,18 @@ export function createQwenProvider(): ImageProviderAdapter {
       const submitResponse = await fetch(proxyUrl(submitUrl), {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${apiKey}`,
+          // 无 Authorization：由 vite 代理注入
           "Content-Type": "application/json",
           "X-DashScope-Async": "enable"
         },
         body: JSON.stringify(requestBody)
       });
+
+      if (submitResponse.status === 401 || submitResponse.status === 403) {
+        throw new Error(
+          "DashScope 拒绝了请求（未授权）。请检查 .env 里的 DASHSCOPE_API_KEY 是否已填且正确，改完需重启服务。"
+        );
+      }
 
       if (!submitResponse.ok) {
         const errorText = await submitResponse.text();
@@ -272,12 +231,7 @@ export function createQwenProvider(): ImageProviderAdapter {
       }
 
       // 2. 轮询任务结果
-      const { imageUrl, actualPrompt } = await pollTaskResult(
-        baseUrl,
-        taskId,
-        apiKey,
-        timeoutMs
-      );
+      const { imageUrl, actualPrompt } = await pollTaskResult(baseUrl, taskId, timeoutMs);
 
       // 3. 下载图片并转为 base64
       const base64 = await downloadImageAsBase64(imageUrl);

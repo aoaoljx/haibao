@@ -59,6 +59,24 @@ Provider 状态：
 `providers/apiProxyMap.ts` 为准，任一处不同步都会表现为静默 404。
 纯静态托管（对象存储 / CDN）没有转发能力，AI 生成会不可用，详见部署文档。
 
+## 密钥边界
+
+界面上没有任何接口配置表单，密钥只存在于 vite 服务端进程内。
+
+| 数据 | 位置 | 是否进客户端包 |
+| --- | --- | --- |
+| API 密钥（`DASHSCOPE_API_KEY` 等，**无前缀**） | `.env`，由 `loadEnv(mode, cwd, "")` 读取 | **否** |
+| 已配好密钥的 Provider 列表 | 构建时由密钥是否存在推导，`define` 注入 `__CONFIGURED_PROVIDERS__` | 是（只有 ID） |
+| 非机密调节项（`VITE_` 前缀） | `.env`，走 `import.meta.env` | 是 |
+
+浏览器发出的请求不带凭据；`vite.config.ts` 的 proxy `configure` 钩子在转发时
+按各家要求的格式注入鉴权头（`Authorization: Bearer`、`x-goog-api-key` 等，
+见 `ApiProxyEntry.authHeader`）。
+
+**「.env 里有没有那把 Key」是可用性的唯一真相源**——不需要另外维护启用列表，
+也就不会出现「填了 Key 却没启用」或「启用了却没 Key」的错配。
+界面的模型下拉只列出真正可用的，不会再出现「选得到、点了才报错」。
+
 ## 约束
 
 - 模型只生成右侧 2.5D 图形，必须是透明底；模型不支持时在客户端去背。

@@ -9,25 +9,19 @@ export type ImageProviderId =
 
 export type ProviderKind = "hosted-api" | "self-hosted-api";
 
-export type ProviderConfigFieldType = "text" | "password" | "url" | "number" | "textarea";
-
-export interface ProviderConfigField {
-  key: keyof ImageProviderConfig | `extra.${string}`;
-  label: string;
-  type: ProviderConfigFieldType;
-  required: boolean;
-  placeholder?: string;
-  description?: string;
-}
-
+/**
+ * 运行期的 Provider 选择。
+ *
+ * **这里没有 apiKey，是刻意的。** 密钥由 vite 服务端从 .env 读取并在转发时
+ * 注入请求头（见 providers/apiProxyMap.ts），浏览器全程不持有凭据。
+ * 想加回 apiKey 字段前先想清楚：那意味着密钥要重新进入客户端包。
+ */
 export interface ImageProviderConfig {
   provider: ImageProviderId;
-  apiKey?: string;
-  baseUrl?: string;
+  /** 模型名。非机密，可留空走 Provider 默认值 */
   model?: string;
-  workflowId?: string;
-  apiVersion?: string;
   timeoutMs?: number;
+  /** 非机密的调节项，来自 VITE_ 前缀的环境变量 */
   extra?: Record<string, string | number | boolean>;
 }
 
@@ -79,5 +73,4 @@ export interface ImageProviderDefinition {
    * 接入真实适配器时按模型实际能力填写。
    */
   supportsTransparentBackground: boolean;
-  configFields: readonly ProviderConfigField[];
 }

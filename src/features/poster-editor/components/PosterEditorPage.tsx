@@ -73,7 +73,6 @@ export function PosterEditorPage() {
           onUploadedFileChange={editor.updateUploadedFile}
           onKeywordsChange={editor.updateKeywords}
           onProviderChange={editor.updateProvider}
-          onProviderConfigFieldChange={editor.updateProviderConfigField}
           onGraphicTextFieldChange={editor.updateGraphicTextField}
           onRemoveBackgroundChange={editor.updateRemoveBackground}
           onGenerateVisual={editor.generateVisual}
