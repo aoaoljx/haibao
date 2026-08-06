@@ -1,5 +1,6 @@
 export type ImageProviderId =
   | "gpt-image"
+  | "replicate"
   | "gemini"
   | "flux"
   | "ideogram"
@@ -41,9 +42,21 @@ export interface GenerateImageInput {
   metadata?: Record<string, string | number | boolean | string[]>;
 }
 
+/**
+ * 返回图片的实际媒体类型。
+ *
+ * 海报要的是带透明通道的图，png 与 webp 都满足。之所以不写死 png：
+ * 部分模型（如 Replicate 上的 flux-schnell）默认吐 webp，
+ * 即使传了 output_format 也未必都遵守。dataUrl 的前缀必须与真实字节一致，
+ * 否则浏览器解码会出问题。
+ *
+ * 导出海报时 canvas 会统一重新编码成 PNG，所以中间格式不影响最终产物。
+ */
+export type ImageMimeType = "image/png" | "image/webp" | "image/jpeg";
+
 export interface GenerateImageResult {
   provider: ImageProviderId;
-  mimeType: "image/png";
+  mimeType: ImageMimeType;
   base64: string;
   dataUrl: string;
   model?: string;

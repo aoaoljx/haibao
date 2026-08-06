@@ -38,12 +38,14 @@ describe("implemented 标记必须与真实情况一致", () => {
     }
   );
 
-  it("当前恰好是千问与 gpt-image 两个已接入", () => {
+  it("当前已接入的是千问、gpt-image、Replicate", () => {
+    // 故意钉死这份名单：新接一个 Provider 时这条会红，
+    // 提醒同步更新 .env.example 与文档里的「哪些能用」
     const implemented = listImageProviderDefinitions()
       .filter((definition) => definition.implemented)
       .map((definition) => definition.id);
 
-    expect(implemented.sort()).toEqual(["gpt-image", "qwen"]);
+    expect(implemented.sort()).toEqual(["gpt-image", "qwen", "replicate"]);
   });
 });
 

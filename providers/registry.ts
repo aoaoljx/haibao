@@ -4,11 +4,13 @@ import { GEMINI_PROVIDER, createGeminiProvider } from "./gemini";
 import { GPT_IMAGE_PROVIDER, createGptImageProvider } from "./gptImage";
 import { IDEOGRAM_PROVIDER, createIdeogramProvider } from "./ideogram";
 import { QWEN_PROVIDER, createQwenProvider } from "./qwen";
+import { REPLICATE_PROVIDER, createReplicateProvider } from "./replicate";
 import { SDXL_PROVIDER, createSdxlProvider } from "./sdxl";
 import type { ImageProviderAdapter, ImageProviderDefinition, ImageProviderId } from "./types";
 
 export const IMAGE_PROVIDER_IDS = [
   "gpt-image",
+  "replicate",
   "gemini",
   "flux",
   "ideogram",
@@ -19,6 +21,7 @@ export const IMAGE_PROVIDER_IDS = [
 
 export const IMAGE_PROVIDER_DEFINITIONS: Record<ImageProviderId, ImageProviderDefinition> = {
   "gpt-image": GPT_IMAGE_PROVIDER,
+  replicate: REPLICATE_PROVIDER,
   gemini: GEMINI_PROVIDER,
   flux: FLUX_PROVIDER,
   ideogram: IDEOGRAM_PROVIDER,
@@ -29,6 +32,7 @@ export const IMAGE_PROVIDER_DEFINITIONS: Record<ImageProviderId, ImageProviderDe
 
 const IMAGE_PROVIDER_FACTORIES: Record<ImageProviderId, () => ImageProviderAdapter> = {
   "gpt-image": createGptImageProvider,
+  replicate: createReplicateProvider,
   gemini: createGeminiProvider,
   flux: createFluxProvider,
   ideogram: createIdeogramProvider,

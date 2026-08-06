@@ -41,6 +41,7 @@ Provider 状态：
 | --- | --- | --- |
 | 千问百炼 Qwen-Image | 已接线（直接 HTTP，异步提交+轮询） | 否，走客户端去背 |
 | OpenAI GPT Image | 已接线（经 Vercel AI SDK） | 是 |
+| Replicate（Flux / SDXL 等） | 已接线（经 Vercel AI SDK） | 否，走客户端去背 |
 | Gemini | 仅注册，适配器未接 | 待确认 |
 | Flux | 仅注册，适配器未接 | 待确认 |
 | Ideogram | 仅注册，适配器未接 | 待确认 |
@@ -61,10 +62,20 @@ AI SDK 约 360kB，只在真正调用该模型时才加载，不进首屏包。
 
 | 模型 | 可选比例 | 对 1.24:1 槽位的误差 |
 | --- | --- | --- |
+| Replicate | 9 种（1:1 / 5:4 / 3:2 / 16:9 / 21:9 及竖版） | 约 1% |
 | 千问 | 5 种（1.0 / 1.333 / 0.75 / 1.778 / 0.5625） | 约 9% |
 | gpt-image | 3 种（1.0 / 1.5 / 0.667） | 约 24% |
 
 也就是说 gpt-image 胜在原生透明底，**不是**尺寸精度——窄幅槽位上它的图形会偏小。
+Replicate 的档位最细，`providers/replicate.test.ts` 有一条用例断言它在每个海报
+槽位上的比例误差都不劣于 gpt-image。
+
+### 接入新的 AI SDK Provider
+
+`providers/aiSdkShared.ts` 收拢了超时控制、结果包装、错误翻译这些公共部分，
+各 Provider 只需写自己的差异：装哪个包、怎么造 model 实例、传 size 还是
+aspectRatio、以及 providerOptions。gpt-image 与 Replicate 都是这个形状，
+再加 Vertex / Luma / Fal 等照抄即可。
 
 ## 跨浏览器 CORS 的处理
 

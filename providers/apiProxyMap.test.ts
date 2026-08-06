@@ -121,12 +121,16 @@ describe("密钥注入", () => {
   it("按各家要求的头格式注入，不是一律 Bearer", () => {
     const config = buildViteProxyConfig({
       OPENAI_API_KEY: "sk-openai",
+      REPLICATE_API_TOKEN: "r8-token",
       GEMINI_API_KEY: "goog-key",
       BFL_API_KEY: "bfl-key"
     });
 
     expect(captureInjectedHeaders(config["/api/openai"])).toEqual({
       Authorization: "Bearer sk-openai"
+    });
+    expect(captureInjectedHeaders(config["/api/replicate"])).toEqual({
+      Authorization: "Bearer r8-token"
     });
     // Google 用自己的头名，且不带 Bearer 前缀
     expect(captureInjectedHeaders(config["/api/gemini"])).toEqual({
@@ -147,6 +151,7 @@ describe("resolveConfiguredProviders", () => {
   it("只返回配了密钥的 Provider", () => {
     expect(resolveConfiguredProviders({ DASHSCOPE_API_KEY: "sk-a" })).toEqual(["qwen"]);
     expect(resolveConfiguredProviders({ OPENAI_API_KEY: "sk-b" })).toEqual(["gpt-image"]);
+    expect(resolveConfiguredProviders({ REPLICATE_API_TOKEN: "r8-c" })).toEqual(["replicate"]);
   });
 
   it("一个都没配时返回空，交由界面提示去填 .env", () => {

@@ -11,6 +11,7 @@ export {
   configuredProviders,
   defaultProvider,
   providerExtras,
+  providerModel,
   providersAwaitingAdapter
 } from "./runtimeConfig";
 export {

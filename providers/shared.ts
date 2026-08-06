@@ -2,6 +2,7 @@ import { toProxyPath } from "./apiProxyMap";
 import type {
   GenerateImageInput,
   GenerateImageResult,
+  ImageMimeType,
   ImageProviderAdapter,
   ImageProviderConfig,
   ImageProviderDefinition
@@ -92,9 +93,10 @@ export function normalizeProviderConfig(config: ImageProviderConfig): ImageProvi
   };
 }
 
-export function createPngResult(params: {
+export function createImageResult(params: {
   provider: GenerateImageResult["provider"];
   base64: string;
+  mimeType: ImageMimeType;
   model?: string;
   width?: number;
   height?: number;
@@ -102,14 +104,27 @@ export function createPngResult(params: {
 }): GenerateImageResult {
   return {
     provider: params.provider,
-    mimeType: "image/png",
+    mimeType: params.mimeType,
     base64: params.base64,
-    dataUrl: `data:image/png;base64,${params.base64}`,
+    dataUrl: `data:${params.mimeType};base64,${params.base64}`,
     model: params.model,
     width: params.width,
     height: params.height,
     raw: params.raw
   };
+}
+
+/** 已确定是 PNG 时的简写 */
+export function createPngResult(
+  params: Omit<Parameters<typeof createImageResult>[0], "mimeType">
+): GenerateImageResult {
+  return createImageResult({ ...params, mimeType: "image/png" });
+}
+
+/** 把 SDK 返回的媒体类型收敛到我们支持的集合，认不出就按 PNG 处理 */
+export function normalizeMimeType(mediaType: string | undefined): ImageMimeType {
+  if (mediaType === "image/webp" || mediaType === "image/jpeg") return mediaType;
+  return "image/png";
 }
 
 export function createDeferredImageProvider(definition: ImageProviderDefinition): ImageProviderAdapter {

@@ -59,3 +59,20 @@ export function providerExtras(provider: ImageProviderId): Record<string, string
     watermark: env.VITE_QWEN_WATERMARK ?? "false"
   };
 }
+
+/**
+ * 从环境变量读取指定 Provider 要用的模型名。返回 undefined 时适配器用自己的默认值。
+ *
+ * 模型名不是机密，所以走 VITE_ 前缀。对 Replicate 尤其有用——
+ * 换 Flux / SDXL / 其它开源模型只要改这个变量，不用动代码。
+ */
+export function providerModel(provider: ImageProviderId): string | undefined {
+  const env = import.meta.env;
+  const configured: Partial<Record<ImageProviderId, string | undefined>> = {
+    replicate: env.VITE_REPLICATE_MODEL,
+    "gpt-image": env.VITE_OPENAI_IMAGE_MODEL,
+    qwen: env.VITE_QWEN_MODEL
+  };
+
+  return configured[provider]?.trim() || undefined;
+}

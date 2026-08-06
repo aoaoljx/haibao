@@ -96,6 +96,13 @@ server {
     proxy_read_timeout 300s;
   }
 
+  location /api/replicate/ {
+    proxy_pass https://api.replicate.com/;
+    proxy_set_header Host api.replicate.com;
+    proxy_ssl_server_name on;
+    proxy_read_timeout 300s;
+  }
+
   location /api/gemini/ {
     proxy_pass https://generativelanguage.googleapis.com/;
     proxy_set_header Host generativelanguage.googleapis.com;

@@ -51,6 +51,13 @@ export const API_PROXY_ENTRIES: readonly ApiProxyEntry[] = [
     providers: ["gpt-image"]
   },
   {
+    host: "api.replicate.com",
+    proxyPrefix: "/api/replicate",
+    apiKeyEnvVar: "REPLICATE_API_TOKEN",
+    authHeader: BEARER,
+    providers: ["replicate"]
+  },
+  {
     host: "generativelanguage.googleapis.com",
     proxyPrefix: "/api/gemini",
     apiKeyEnvVar: "GEMINI_API_KEY",

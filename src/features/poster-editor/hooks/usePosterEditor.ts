@@ -4,6 +4,7 @@ import {
   defaultProvider,
   isImageProviderId,
   providerExtras,
+  providerModel,
   type ImageProviderConfig,
   type ImageProviderId
 } from "@providers";
@@ -57,6 +58,7 @@ const SELECTED_PROVIDER_KEY = "idevflow-poster-selected-provider";
 function buildProviderConfig(provider: ImageProviderId): ImageProviderConfig {
   return {
     provider,
+    model: providerModel(provider),
     extra: providerExtras(provider)
   };
 }
