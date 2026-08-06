@@ -28,11 +28,30 @@ function createFakeImage(id: string, width = 1000, height = 800): FakeImage {
   return { id, naturalWidth: width, naturalHeight: height };
 }
 
+interface TextDraw {
+  text: string;
+  fillStyle: unknown;
+  x: number;
+  y: number;
+}
+
 function createRecordingCanvas() {
   const drawImageCalls: DrawImageCall[] = [];
   const filledText: string[] = [];
+  const textDraws: TextDraw[] = [];
+  const fillStyles: unknown[] = [];
+  const gradients: { stops: string[] }[] = [];
 
-  const gradient = { addColorStop: () => {} };
+  const makeGradient = () => {
+    const record = { stops: [] as string[] };
+    gradients.push(record);
+    return {
+      __gradient: true,
+      addColorStop: (_offset: number, color: string) => {
+        record.stops.push(color);
+      }
+    };
+  };
 
   const ctx = {
     canvas: { width: 3840, height: 1920 },
@@ -40,17 +59,20 @@ function createRecordingCanvas() {
     drawImage: (image: FakeImage, x: number, y: number, w: number, h: number) => {
       drawImageCalls.push({ image, x, y, w, h });
     },
-    fillText: (text: string) => {
+    fillText: (text: string, x: number, y: number) => {
       filledText.push(text);
+      textDraws.push({ text, fillStyle: ctx.fillStyle, x, y });
     },
     strokeText: (text: string) => {
       filledText.push(text);
     },
     measureText: (text: string) => ({ width: text.length * 10 }),
-    createLinearGradient: () => gradient,
+    createLinearGradient: () => makeGradient(),
     // 其余调用只需存在
     clearRect: () => {},
-    fillRect: () => {},
+    fillRect: () => {
+      fillStyles.push(ctx.fillStyle);
+    },
     save: () => {},
     restore: () => {},
     beginPath: () => {},
@@ -76,7 +98,7 @@ function createRecordingCanvas() {
     getContext: () => ctx
   } as unknown as HTMLCanvasElement;
 
-  return { canvas, drawImageCalls, filledText };
+  return { canvas, drawImageCalls, filledText, textDraws, fillStyles, gradients };
 }
 
 const libraryImages: Record<string, FakeImage> = {
@@ -292,5 +314,93 @@ describe("renderPoster 两种模式都能画出标题", () => {
 
     expect(filledText).toContain("代码在线编辑");
     expect(filledText).toContain("功能发布");
+  });
+});
+
+/**
+ * 深浅两版此前是两套复制的绘制函数，现在由 theme 驱动同一套代码。
+ * 这组用例锁住"合并没有把两版拉平"——差异必须还在。
+ */
+describe("theme 合并后两版海报的差异仍然保留", () => {
+  const withNotice = { notice: "让您专注于业务创造" };
+
+  function render(mode: PosterMode) {
+    const recording = createRecordingCanvas();
+    renderPoster(
+      recording.canvas,
+      buildInput({
+        mode,
+        copy: { ...buildInput().copy, ...withNotice }
+      })
+    );
+    return recording;
+  }
+
+  it("主标题配色两版不同", () => {
+    const feature = render("feature").textDraws.find((d) => d.text === "代码在线编辑");
+    const ai = render("ai").textDraws.find((d) => d.text === "代码在线编辑");
+
+    expect(feature?.fillStyle).toBe("#2180f7");
+    expect(ai?.fillStyle).toBe("#ffffff");
+  });
+
+  it("强调标题：浅色版纯色，深色版渐变", () => {
+    const feature = render("feature");
+    const ai = render("ai");
+
+    expect(feature.textDraws.find((d) => d.text === "功能发布")?.fillStyle).toBe("#0c1f75");
+    // 深色版用渐变对象填充，且色标就是主题里那三个
+    expect(ai.textDraws.find((d) => d.text === "功能发布")?.fillStyle).toHaveProperty(
+      "__gradient",
+      true
+    );
+    expect(ai.gradients.some((g) => g.stops.includes("#7026f4"))).toBe(true);
+  });
+
+  it("功能点描述配色两版不同", () => {
+    const feature = render("feature").textDraws.find((d) => d.text.includes("标签化管理"));
+    const ai = render("ai").textDraws.find((d) => d.text.includes("标签化管理"));
+
+    expect(feature?.fillStyle).toBe("#324e7b");
+    expect(ai?.fillStyle).toBe("rgba(255, 255, 255, 0.7)");
+  });
+
+  it("提示语：浅色版带心形徽标，深色版只有文字", () => {
+    expect(render("feature").filledText).toContain("♥");
+    expect(render("ai").filledText).not.toContain("♥");
+  });
+
+  it("底部标语只在深色版出现", () => {
+    const hasTagline = (texts: string[]) => texts.some((t) => t.includes("GLOBAL PERSPECTIVE"));
+
+    expect(hasTagline(render("ai").filledText)).toBe(true);
+    expect(hasTagline(render("feature").filledText)).toBe(false);
+  });
+
+  it("Logo 两版用不同素材，深色版保持原始比例", () => {
+    const featureLogo = render("feature").drawImageCalls.find((c) => c.image.id === "logo");
+    const aiLogo = render("ai").drawImageCalls.find((c) => c.image.id === "logoAi");
+
+    expect(featureLogo).toMatchObject({ w: 1495, h: 200 });
+    // logoAi 原始 660x208，高度对齐到 200 后宽度应约 635，而不是被拉成 1495
+    expect(aiLogo?.h).toBe(200);
+    expect(aiLogo?.w).toBeCloseTo(Math.round(660 * (200 / 208)), 0);
+  });
+
+  it("背景：浅色版贴图，深色版渐变", () => {
+    const feature = render("feature");
+    const ai = render("ai");
+
+    expect(feature.drawImageCalls.some((c) => c.image.id === "featureBg")).toBe(true);
+    expect(ai.drawImageCalls.some((c) => c.image.id === "featureBg")).toBe(false);
+    expect(ai.gradients.some((g) => g.stops.includes("#0a0e27"))).toBe(true);
+  });
+
+  it("两版的产品标签位置一致——布局本就该共用", () => {
+    const pick = (mode: PosterMode) =>
+      render(mode).drawImageCalls.find((c) => c.image.id === "productBadge");
+
+    expect(pick("feature")).toMatchObject({ x: 160, y: 470, w: 585, h: 198 });
+    expect(pick("ai")).toMatchObject({ x: 160, y: 470, w: 585, h: 198 });
   });
 });
