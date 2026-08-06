@@ -5,6 +5,7 @@ export const FLUX_PROVIDER: ImageProviderDefinition = {
   id: "flux",
   displayName: "Flux",
   kind: "hosted-api",
+  implemented: false,
   supportsTransparentBackground: false,
   description: "Flux-compatible image provider adapter. API details are configured by operators.",
 };

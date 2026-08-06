@@ -4,6 +4,7 @@ import { getVisualByKey } from "@/shared/poster/visualMapping";
 import {
   configuredProviders,
   getImageProviderDefinition,
+  providersAwaitingAdapter,
   type ImageProviderId
 } from "@providers";
 import type { GraphicSource, PosterCopy, VisualAsset, VisualKey } from "@/shared/poster/types";
@@ -39,6 +40,11 @@ const graphicSourceOptions: Array<{ label: string; value: GraphicSource }> = [
  * 在模块级求值：构建时注入的常量，运行期不会变。
  */
 const readyProviders = configuredProviders().map(getImageProviderDefinition);
+
+/** 配了密钥但适配器还没接的，单独提示，免得运营以为自己配错了 */
+const pendingProviders = providersAwaitingAdapter().map(
+  (id) => getImageProviderDefinition(id).displayName
+);
 
 export function EditorPanel({
   state,
@@ -200,9 +206,15 @@ export function EditorPanel({
               ) : (
                 <p className="field-hint field-hint-warn">
                   还没有可用的图片模型。请复制 .env.example 为 .env，
-                  填入至少一个 API Key（例如 DASHSCOPE_API_KEY），然后重启服务。
+                  填入 DASHSCOPE_API_KEY 或 OPENAI_API_KEY，然后重启服务。
                 </p>
               )}
+              {pendingProviders.length ? (
+                <p className="field-hint field-hint-warn">
+                  已在 .env 里配置但<strong>尚未支持</strong>：{pendingProviders.join("、")}。
+                  这几个 Provider 只在注册表里占位，适配器还没接，所以不会出现在上面的列表里。
+                </p>
+              ) : null}
               {providerDefinition.supportsTransparentBackground ? null : (
                 <label className="checkbox-option">
                   <input

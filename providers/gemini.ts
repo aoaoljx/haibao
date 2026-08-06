@@ -5,6 +5,7 @@ export const GEMINI_PROVIDER: ImageProviderDefinition = {
   id: "gemini",
   displayName: "Gemini",
   kind: "hosted-api",
+  implemented: false,
   supportsTransparentBackground: false,
   description: "Google Gemini image provider adapter. API details are configured by operators.",
 };

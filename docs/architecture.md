@@ -90,9 +90,20 @@ AI SDK 约 360kB，只在真正调用该模型时才加载，不进首屏包。
 按各家要求的格式注入鉴权头（`Authorization: Bearer`、`x-goog-api-key` 等，
 见 `ApiProxyEntry.authHeader`）。
 
-**「.env 里有没有那把 Key」是可用性的唯一真相源**——不需要另外维护启用列表，
-也就不会出现「填了 Key 却没启用」或「启用了却没 Key」的错配。
-界面的模型下拉只列出真正可用的，不会再出现「选得到、点了才报错」。
+**可用 = 配了密钥 且 适配器已接入**，两个条件缺一不可：
+
+- 密钥是否存在 → 由 `.env` 决定，不需要另外维护启用列表，
+  不会出现「填了 Key 却没启用」或「启用了却没 Key」的错配
+- 适配器是否接入 → 由 `ImageProviderDefinition.implemented` 声明
+
+界面下拉只列出同时满足两者的模型。**只按密钥过滤是不够的**——
+七个 Provider 里目前只有千问和 gpt-image 有真实适配器，
+填了 `GEMINI_API_KEY` 会让 Gemini 有密钥但仍不可用，
+若不按 `implemented` 过滤，运营就会选中一个点了必报错的模型。
+这类「配了但还不支持」的会单独提示，免得看起来像配错了。
+
+`providers/registry.test.ts` 校验 `implemented` 标记与真实情况一致：
+标为 false 的调用必须抛占位错误，标为 true 的必须不抛。
 
 > 这里刻意没用 `define`：实测它在本项目的 dev server 下不会替换 `providers/`
 > 里的标识符，会造成「构建能用、`npm run dev` 却报没有可用模型」的 dev/prod 割裂。

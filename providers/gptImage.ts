@@ -30,6 +30,7 @@ export const GPT_IMAGE_PROVIDER: ImageProviderDefinition = {
   id: "gpt-image",
   displayName: "OpenAI GPT Image",
   kind: "hosted-api",
+  implemented: true,
   // gpt-image 支持 background=transparent，下面确实传了，所以这里为 true
   supportsTransparentBackground: true,
   description:

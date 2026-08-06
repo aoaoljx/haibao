@@ -1,6 +1,6 @@
 // 由 configuredProvidersPlugin 在构建/开发期生成，内容取决于 .env 里配了哪些密钥
 import { configuredProviderIds } from "virtual:configured-providers";
-import { IMAGE_PROVIDER_IDS, isImageProviderId } from "./registry";
+import { getImageProviderDefinition, IMAGE_PROVIDER_IDS, isImageProviderId } from "./registry";
 import type { ImageProviderId } from "./types";
 
 /**
@@ -9,14 +9,34 @@ import type { ImageProviderId } from "./types";
  * 边界很清楚：
  * - **密钥**（无前缀，如 DASHSCOPE_API_KEY）只有 vite 服务端读得到，
  *   转发时注入请求头，永远不进这个文件、不进客户端包。
- * - **可用性**（哪些 Provider 配好了）由 vite.config 依据密钥是否存在推导后
- *   通过 __CONFIGURED_PROVIDERS__ 注入，只有 Provider ID，不含密钥。
+ * - **可用性**（哪些 Provider 配好了密钥）由 vite.config 依据密钥是否存在推导后
+ *   通过 virtual:configured-providers 注入，只有 Provider ID，不含密钥。
  * - **非机密调节项**（VITE_ 前缀）直接读 import.meta.env。
  */
 
-/** 已在 .env 中配好密钥、可以真正调用的 Provider */
-export function configuredProviders(): ImageProviderId[] {
+/** .env 里配了密钥的 Provider——不代表适配器已接入 */
+function providersWithKey(): ImageProviderId[] {
   return configuredProviderIds.filter(isImageProviderId);
+}
+
+/**
+ * 真正可用的 Provider：**既配了密钥，又接入了真实适配器**。
+ *
+ * 两个条件缺一不可。七个 Provider 里目前只有千问和 gpt-image 有真实适配器，
+ * 其余五个调用会抛「adapter is not connected yet」。只按密钥过滤的话，
+ * 填了 GEMINI_API_KEY 就会让 Gemini 出现在下拉里，选中后点生成才报错。
+ */
+export function configuredProviders(): ImageProviderId[] {
+  return providersWithKey().filter((id) => getImageProviderDefinition(id).implemented);
+}
+
+/**
+ * 配了密钥但适配器还没接的 Provider。
+ *
+ * 界面用它给一句说明——否则运营填了 Key 却发现模型没出现，会以为配错了。
+ */
+export function providersAwaitingAdapter(): ImageProviderId[] {
+  return providersWithKey().filter((id) => !getImageProviderDefinition(id).implemented);
 }
 
 /**

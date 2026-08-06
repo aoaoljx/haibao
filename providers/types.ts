@@ -73,4 +73,15 @@ export interface ImageProviderDefinition {
    * 接入真实适配器时按模型实际能力填写。
    */
   supportsTransparentBackground: boolean;
+  /**
+   * 是否已接入真实适配器。
+   *
+   * false 表示只在注册表里占位，调用会抛「adapter is not connected yet」。
+   * 界面据此过滤——**填了 Key 但适配器没接的模型不会出现在下拉里**，
+   * 免得运营选中后才发现用不了。
+   *
+   * 改这个值时记得同步换掉 createDeferredImageProvider()，
+   * providers/registry.test.ts 会校验两者一致。
+   */
+  implemented: boolean;
 }

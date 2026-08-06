@@ -7,7 +7,12 @@ export {
   isImageProviderId,
   listImageProviderDefinitions
 } from "./registry";
-export { configuredProviders, defaultProvider, providerExtras } from "./runtimeConfig";
+export {
+  configuredProviders,
+  defaultProvider,
+  providerExtras,
+  providersAwaitingAdapter
+} from "./runtimeConfig";
 export {
   createPngResult,
   DEFAULT_IMAGE_SIZE,
