@@ -1,41 +1,21 @@
 import { useCallback, useMemo, useState, useEffect } from "react";
 import type { ImageProviderConfig, ImageProviderId } from "@providers";
-import {
-  clonePosterCopy,
-  createDefaultGraphicTextState,
-  posterPresets
-} from "@/shared/poster/defaults";
+import { clonePosterCopy, posterPresets } from "@/shared/poster/defaults";
 import { visualMapping } from "@/shared/poster/visualMapping";
-import type {
-  PosterCopy,
-  PosterMode,
-  VisualKey,
-  VisualTextValueMap
-} from "@/shared/poster/types";
+import type { PosterCopy, PosterMode, VisualKey } from "@/shared/poster/types";
 import { generateVisualImage } from "@/services/visual-generation";
 
 export type GraphicSource = "ai" | "library" | "upload";
-
-export interface GraphicOverlayText {
-  topText: string;
-  label: string;
-  buttonText: string;
-  badgeText: string;
-}
-
-type GraphicTextByMode = Record<PosterMode, Record<VisualKey, VisualTextValueMap>>;
 
 export interface PosterEditorState {
   mode: PosterMode;
   copy: PosterCopy;
   visualKey: VisualKey;
-  graphicText: Record<VisualKey, VisualTextValueMap>;
   graphicSource: GraphicSource;
   libraryVisualKey: VisualKey;
   uploadedFileName: string;
   keywords: string;
   providerConfig: ImageProviderConfig;
-  graphicOverlayText: GraphicOverlayText;
   statusMessage: string;
   statusKind: "" | "ok" | "error";
   aiGeneratedImage: HTMLImageElement | null;
@@ -91,19 +71,15 @@ export function usePosterEditor() {
   const [mode, setMode] = useState<PosterMode>("feature");
   const [copy, setCopy] = useState<PosterCopy>(() => clonePosterCopy(posterPresets.feature.copy));
   const [visualKey, setVisualKey] = useState<VisualKey>("graphic1");
-  const [graphicTextByMode] = useState<GraphicTextByMode>(() => ({
-    feature: createDefaultGraphicTextState(),
-    ai: createDefaultGraphicTextState()
-  }));
   const [graphicSourceByMode, setGraphicSourceByMode] = useState<Record<PosterMode, GraphicSource>>(
     {
-      feature: "ai",
+      feature: "library",
       ai: "ai"
     }
   );
   const [libraryVisualByMode, setLibraryVisualByMode] = useState<Record<PosterMode, VisualKey>>({
     feature: "graphic1",
-    ai: "graphic5"
+    ai: "graphic6"
   });
   const [uploadedFileNameByMode, setUploadedFileNameByMode] = useState<Record<PosterMode, string>>({
     feature: "",
@@ -120,22 +96,6 @@ export function usePosterEditor() {
   const [keywordTouchedByMode, setKeywordTouchedByMode] = useState<Record<PosterMode, boolean>>({
     feature: false,
     ai: false
-  });
-  const [graphicOverlayTextByMode, setGraphicOverlayTextByMode] = useState<
-    Record<PosterMode, GraphicOverlayText>
-  >({
-    feature: {
-      topText: "iDevflow",
-      label: "",
-      buttonText: "提交",
-      badgeText: ""
-    },
-    ai: {
-      topText: "AI",
-      label: "测试用例",
-      buttonText: "生成",
-      badgeText: "beta版"
-    }
   });
   const [statusMessage, setStatusMessage] = useState("");
   const [statusKind, setStatusKind] = useState<"" | "ok" | "error">("");
@@ -163,13 +123,11 @@ export function usePosterEditor() {
       mode,
       copy,
       visualKey,
-      graphicText: graphicTextByMode[mode],
       graphicSource: graphicSourceByMode[mode],
       libraryVisualKey: libraryVisualByMode[mode],
       uploadedFileName: uploadedFileNameByMode[mode],
       keywords: keywordTouchedByMode[mode] ? keywordsByMode[mode] : deriveKeywords(copy),
       providerConfig,
-      graphicOverlayText: graphicOverlayTextByMode[mode],
       statusMessage,
       statusKind,
       aiGeneratedImage: aiGeneratedImageByMode[mode],
@@ -178,9 +136,7 @@ export function usePosterEditor() {
     }),
     [
       copy,
-      graphicOverlayTextByMode,
       graphicSourceByMode,
-      graphicTextByMode,
       keywordTouchedByMode,
       keywordsByMode,
       libraryVisualByMode,
@@ -207,7 +163,7 @@ export function usePosterEditor() {
     setVisualKey(presetVisual);
     setGraphicSourceByMode((current) => ({
       ...current,
-      [nextMode]: "ai"
+      [nextMode]: nextMode === "feature" ? "library" : "ai"
     }));
     setLibraryVisualByMode((current) => ({
       ...current,
@@ -349,19 +305,6 @@ export function usePosterEditor() {
     []
   );
 
-  const updateGraphicOverlayText = useCallback(
-    (field: keyof GraphicOverlayText, value: string) => {
-      setGraphicOverlayTextByMode((current) => ({
-        ...current,
-        [mode]: {
-          ...current[mode],
-          [field]: value
-        }
-      }));
-    },
-    [mode]
-  );
-
   const generateVisual = useCallback(async () => {
     if (isGenerating) return;
 
@@ -385,7 +328,6 @@ export function usePosterEditor() {
         titleDark: copy.titleDark,
         featurePoints: copy.featurePoints,
         keywords: currentKeywords,
-        graphicText: graphicOverlayTextByMode[mode],
         providerConfig
       });
 
@@ -428,8 +370,7 @@ export function usePosterEditor() {
     mode,
     keywordTouchedByMode,
     keywordsByMode,
-    copy,
-    graphicOverlayTextByMode
+    copy
   ]);
 
   const setStatus = useCallback((message: string, kind: "" | "ok" | "error" = "") => {
@@ -451,7 +392,6 @@ export function usePosterEditor() {
     updateKeywords,
     updateProvider,
     updateProviderConfigField,
-    updateGraphicOverlayText,
     generateVisual,
     setStatus
   };

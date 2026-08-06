@@ -1,6 +1,6 @@
 import type { GenerateImageResult, ImageProviderConfig } from "../../../providers";
-import type { PromptGraphicText } from "../../../prompt/promptBuilder";
 import type { PromptSceneKey } from "../../../prompt/scenePrompt";
+import type { ModeVisualStyleKey } from "../../../prompt/stylePrompt";
 import type { PosterMode } from "../../shared/poster/types";
 
 export interface VisualGenerationInput {
@@ -9,7 +9,6 @@ export interface VisualGenerationInput {
   titleDark?: string;
   featurePoints: readonly string[];
   keywords?: string;
-  graphicText?: PromptGraphicText;
 }
 
 export interface VisualGenerationTrace {
@@ -18,6 +17,8 @@ export interface VisualGenerationTrace {
   matchedCategories: string[];
   sceneKey: PromptSceneKey;
   sceneName: string;
+  styleKey: ModeVisualStyleKey;
+  styleName: string;
   visualElements: string[];
 }
 

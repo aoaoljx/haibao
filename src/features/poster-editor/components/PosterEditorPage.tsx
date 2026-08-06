@@ -34,7 +34,6 @@ export function PosterEditorPage() {
         mode: editor.state.mode,
         copy: editor.state.copy,
         visualKey: editor.state.visualKey,
-        graphicText: editor.state.graphicText,
         images: assets.images,
         aiGeneratedImage: editor.state.aiGeneratedImage
       });
@@ -72,7 +71,6 @@ export function PosterEditorPage() {
           onKeywordsChange={editor.updateKeywords}
           onProviderChange={editor.updateProvider}
           onProviderConfigFieldChange={editor.updateProviderConfigField}
-          onGraphicOverlayTextChange={editor.updateGraphicOverlayText}
           onGenerateVisual={editor.generateVisual}
         />
 
