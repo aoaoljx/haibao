@@ -36,6 +36,7 @@ export interface PosterEditorState {
   keywords: string;
   providerConfig: ImageProviderConfig;
   graphicOverlayText: GraphicOverlayText;
+  removeBackground: boolean;
   statusMessage: string;
   statusKind: "" | "ok" | "error";
   aiGeneratedImage: HTMLImageElement | null;
@@ -137,6 +138,8 @@ export function usePosterEditor() {
       badgeText: "beta版"
     }
   });
+  // 模型不产透明底时在客户端去背。默认开启；万一去背伤到主体，运营可以关掉重试。
+  const [removeBackground, setRemoveBackground] = useState(true);
   const [statusMessage, setStatusMessage] = useState("");
   const [statusKind, setStatusKind] = useState<"" | "ok" | "error">("");
   const [aiGeneratedImageByMode, setAiGeneratedImageByMode] = useState<
@@ -170,6 +173,7 @@ export function usePosterEditor() {
       keywords: keywordTouchedByMode[mode] ? keywordsByMode[mode] : deriveKeywords(copy),
       providerConfig,
       graphicOverlayText: graphicOverlayTextByMode[mode],
+      removeBackground,
       statusMessage,
       statusKind,
       aiGeneratedImage: aiGeneratedImageByMode[mode],
@@ -186,6 +190,7 @@ export function usePosterEditor() {
       libraryVisualByMode,
       mode,
       providerConfig,
+      removeBackground,
       statusKind,
       statusMessage,
       uploadedFileNameByMode,
@@ -388,6 +393,7 @@ export function usePosterEditor() {
         graphicText: graphicOverlayTextByMode[mode],
         // 按图形最终要落进的槽位反推请求尺寸，避免生成方图后被拉伸
         targetBounds: getVisualByKey(visualKey).posterBounds,
+        removeBackground,
         providerConfig
       });
 
@@ -414,8 +420,11 @@ export function usePosterEditor() {
         [mode]: "ai"
       }));
 
+      const modelLabel = result.image.model || providerConfig.provider;
       setStatus(
-        `图形生成成功！（模型：${result.image.model || providerConfig.provider}）`,
+        result.backgroundRemoved
+          ? `图形生成成功，已自动去除背景（模型：${modelLabel}）`
+          : `图形生成成功。该模型不产透明底，图形可能带背景色块，可在预览中确认（模型：${modelLabel}）`,
         "ok"
       );
     } catch (error) {
@@ -432,7 +441,8 @@ export function usePosterEditor() {
     keywordsByMode,
     copy,
     graphicOverlayTextByMode,
-    visualKey
+    visualKey,
+    removeBackground
   ]);
 
   const setStatus = useCallback((message: string, kind: "" | "ok" | "error" = "") => {
@@ -455,6 +465,7 @@ export function usePosterEditor() {
     updateProvider,
     updateProviderConfigField,
     updateGraphicOverlayText,
+    updateRemoveBackground: setRemoveBackground,
     generateVisual,
     setStatus
   };

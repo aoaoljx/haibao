@@ -65,6 +65,8 @@ export const QWEN_PROVIDER: ImageProviderDefinition = {
   id: "qwen",
   displayName: "千问百炼 (Qwen-Image)",
   kind: "hosted-api",
+  // DashScope 文生图不产透明通道，返回的是不透明底图，需要客户端去背
+  supportsTransparentBackground: false,
   description:
     "阿里云百炼平台千问文生图（Qwen-Image）Provider，支持 qwen-image-max / qwen-image-turbo / qwen-image 及 2.0 系列模型，通过 DashScope API 异步调用。",
   defaultModel: DEFAULT_MODEL,

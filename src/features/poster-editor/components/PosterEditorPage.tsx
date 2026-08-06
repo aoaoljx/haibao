@@ -73,6 +73,7 @@ export function PosterEditorPage() {
           onProviderChange={editor.updateProvider}
           onProviderConfigFieldChange={editor.updateProviderConfigField}
           onGraphicOverlayTextChange={editor.updateGraphicOverlayText}
+          onRemoveBackgroundChange={editor.updateRemoveBackground}
           onGenerateVisual={editor.generateVisual}
         />
 

@@ -6,6 +6,7 @@ export const SDXL_PROVIDER: ImageProviderDefinition = {
   id: "sdxl",
   displayName: "SDXL",
   kind: "self-hosted-api",
+  supportsTransparentBackground: false,
   description: "SDXL-compatible provider adapter. Endpoint and model are configured by operators.",
   configFields: [baseUrlField, optionalModelField, workflowIdField, optionalApiKeyField, timeoutField]
 };

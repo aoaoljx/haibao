@@ -4,6 +4,7 @@ import type {
   PosterEditorState
 } from "../hooks/usePosterEditor";
 import {
+  getImageProviderDefinition,
   getManualApiConfigFields,
   listImageProviderDefinitions,
   type ImageProviderConfig,
@@ -30,6 +31,7 @@ interface EditorPanelProps {
     value: string
   ) => void;
   onGraphicOverlayTextChange: (field: keyof GraphicOverlayText, value: string) => void;
+  onRemoveBackgroundChange: (value: boolean) => void;
   onGenerateVisual: () => void;
 }
 
@@ -105,9 +107,11 @@ export function EditorPanel({
   onProviderChange,
   onProviderConfigFieldChange,
   onGraphicOverlayTextChange,
+  onRemoveBackgroundChange,
   onGenerateVisual
 }: EditorPanelProps) {
   const providerFields = getManualApiConfigFields(state.providerConfig.provider);
+  const providerDefinition = getImageProviderDefinition(state.providerConfig.provider);
 
   return (
     <aside className="panel">
@@ -240,6 +244,26 @@ export function EditorPanel({
                   onChange={onProviderConfigFieldChange}
                 />
               ))}
+              <p className="field-hint">
+                接口配置（含 API Key）保存在本机浏览器，方便下次直接使用；
+                公用电脑请注意清理。
+              </p>
+              {providerDefinition.supportsTransparentBackground ? null : (
+                <label className="checkbox-option">
+                  <input
+                    type="checkbox"
+                    checked={state.removeBackground}
+                    onChange={(event) => onRemoveBackgroundChange(event.target.checked)}
+                  />
+                  <span>
+                    自动去除背景
+                    <span className="field-hint">
+                      该模型不产透明底。海报右侧图形需要透明，默认自动抠掉背景；
+                      若发现主体被误伤，可关掉后重新生成。
+                    </span>
+                  </span>
+                </label>
+              )}
             </div>
 
             {/* AI 生成按钮 */}

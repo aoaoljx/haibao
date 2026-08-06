@@ -6,6 +6,7 @@ export const IDEOGRAM_PROVIDER: ImageProviderDefinition = {
   id: "ideogram",
   displayName: "Ideogram",
   kind: "hosted-api",
+  supportsTransparentBackground: false,
   description: "Ideogram image provider adapter. API details are configured by operators.",
   configFields: [apiKeyField, optionalBaseUrlField, modelField, timeoutField]
 };

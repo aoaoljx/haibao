@@ -1,7 +1,8 @@
 import { buildVisualPrompt } from "../../../prompt/promptBuilder";
-import { generateImage } from "../../../providers";
+import { generateImage, getImageProviderDefinition } from "../../../providers";
 import { deriveRequestSize } from "../../shared/poster/geometry";
 import type { VisualBounds } from "../../shared/poster/types";
+import { removeImageBackground } from "./backgroundRemoval.browser";
 import { extractVisualKeywords } from "./keywordExtractor";
 import type {
   VisualGenerationInput,
@@ -63,8 +64,30 @@ export async function generateVisualImage(
     request.providerConfig
   );
 
+  // 海报右侧图形必须透明底。模型声明不支持透明时在客户端补一次去背，
+  // 否则贴到海报上就是一个不透明色块。
+  const definition = getImageProviderDefinition(request.providerConfig.provider);
+  const shouldRemoveBackground =
+    request.removeBackground !== false && !definition.supportsTransparentBackground;
+
+  if (!shouldRemoveBackground) {
+    return { image, trace: plan.trace, backgroundRemoved: false };
+  }
+
+  const removal = await removeImageBackground(image.dataUrl);
+  if (!removal) {
+    // 去背结果不可信（几乎没去掉，或把主体也吃了）时保留原图，
+    // 由运营在预览里自行判断，不做静默的破坏性处理
+    return { image, trace: plan.trace, backgroundRemoved: false };
+  }
+
   return {
-    image,
-    trace: plan.trace
+    image: {
+      ...image,
+      dataUrl: removal.dataUrl,
+      base64: removal.dataUrl.slice(removal.dataUrl.indexOf(",") + 1)
+    },
+    trace: plan.trace,
+    backgroundRemoved: true
   };
 }
