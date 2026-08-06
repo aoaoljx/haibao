@@ -1,5 +1,5 @@
 import { buildVisualPrompt } from "../../../prompt/promptBuilder";
-import { generateImage, getImageProviderDefinition } from "../../../providers";
+import { generateImage } from "../../../providers";
 import { deriveRequestSize } from "../../shared/poster/geometry";
 import type { VisualBounds } from "../../shared/poster/types";
 import { removeImageBackground } from "./backgroundRemoval.browser";
