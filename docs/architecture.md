@@ -31,21 +31,42 @@ AI 能力全部抽象为接口，不与编辑器 UI、Canvas 渲染或海报文�
 - `providers/types.ts`：定义统一输入、输出、Provider 配置和 Adapter 接口。
 - `providers/modelAdapter.ts`：统一暴露 `generateImage(input, config)`。
 - `providers/registry.ts`：维护 Provider 注册表和运营配置字段。
+- `providers/apiProxyMap.ts`：模型 API 的同源代理映射，运行时改写与转发配置共用的唯一真相源。
 - `src/services/visual-generation/visualGenerationService.ts`：把业务输入转成图片生成请求。
+- `src/services/visual-generation/backgroundRemoval.ts`：模型不产透明底时的客户端去背。
 
-当前 Provider 已预留：
+Provider 状态：
 
-- GPT Image
-- Gemini
-- Flux
-- Ideogram
-- ComfyUI
-- SDXL
+| Provider | 状态 | 原生透明底 |
+| --- | --- | --- |
+| 千问百炼 Qwen-Image | 已接线 | 否，走客户端去背 |
+| GPT Image | 仅注册，适配器未接 | 待确认 |
+| Gemini | 仅注册，适配器未接 | 待确认 |
+| Flux | 仅注册，适配器未接 | 待确认 |
+| Ideogram | 仅注册，适配器未接 | 待确认 |
+| ComfyUI | 仅注册，适配器未接 | 视工作流而定 |
+| SDXL | 仅注册，适配器未接 | 待确认 |
+
+「仅注册」表示 UI 里能选、能填配置，但调用时会明确报错，接入真实 HTTP 适配器后即可用。
+
+## 跨浏览器 CORS 的处理
+
+浏览器直连模型 API 会被 CORS 拦截，因此前端把请求改写成同源前缀
+（`/api/dashscope/...`），由 dev server、preview server 或生产环境的 Nginx 转发。
+
+**代理前缀只代表 origin，pathname 原样透传。** 转发层必须剥掉前缀，
+且 target 不能再带路径，否则路径会被叠加两次。三处配置都以
+`providers/apiProxyMap.ts` 为准，任一处不同步都会表现为静默 404。
+纯静态托管（对象存储 / CDN）没有转发能力，AI 生成会不可用，详见部署文档。
 
 ## 约束
 
-- 模型只生成右侧 2.5D 透明 PNG。
+- 模型只生成右侧 2.5D 图形，必须是透明底；模型不支持时在客户端去背。
 - 模型不生成标题、不生成功能点、不修改运营输入。
-- Prompt 不暴露给运营。
-- Provider API 配置可由运营在界面输入，后续也可以替换为服务器保存的配置。
+- Prompt 不暴露给运营，但命中的场景模板与关键词类目会显示在界面上，便于排查。
+- 图形文字只能叠加在素材图库的图形上——槽位坐标是按那几张素材逐个标定的。
+- 生成请求的尺寸由目标槽位比例派生；外来图片一律等比放入槽位，绝不拉伸。
+- Provider API 配置由运营在界面输入并保存在本机浏览器。
+  生产环境如需集中管理密钥，应在服务端保存并代理，前端不再持有 Key。
 - 海报画布布局、品牌素材、导出尺寸和原视觉风格保持稳定。
+  两版海报的差异集中在 `posterRenderer.ts` 的 `POSTER_THEMES`。

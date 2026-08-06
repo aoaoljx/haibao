@@ -103,7 +103,6 @@ function createRecordingCanvas() {
 
 const libraryImages: Record<string, FakeImage> = {
   featureBg: createFakeImage("featureBg", 3840, 1920),
-  aiBg: createFakeImage("aiBg", 3840, 1920),
   logo: createFakeImage("logo"),
   logoAi: createFakeImage("logoAi", 660, 208),
   productBadge: createFakeImage("productBadge"),
@@ -122,7 +121,6 @@ function buildInput(overrides: Partial<PosterRenderInput> = {}): PosterRenderInp
       titleDark: "功能发布",
       subtitle: "",
       notice: "",
-      tag: "",
       featurePoints: ["代码评论：标签化管理"]
     },
     visualKey: "graphic1",

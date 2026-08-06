@@ -21,7 +21,6 @@ export interface PosterCopy {
   titleDark?: string;
   subtitle?: string;
   notice?: string;
-  tag?: string;
   featurePoints: string[];
 }
 
@@ -55,16 +54,14 @@ export interface VisualAsset {
   key: VisualKey;
   name: string;
   assetPath: string;
-  sourceAssetPath?: string;
   description: string;
+  /** 该图形更适合哪一版海报。用于在素材图库里标注推荐，不限制选择 */
   preferredModes: PosterMode[];
   naturalSize: {
     width: number;
     height: number;
   };
   posterBounds: VisualBounds;
-  keywords: string[];
-  promptHints: string[];
   editableTextFields: VisualTextField[];
   renderSlots: VisualTextRenderSlot[];
 }
@@ -80,7 +77,6 @@ export interface VisualMapping {
     height: number;
   };
   fallback: Record<PosterMode, VisualKey>;
-  matchPriority: Record<PosterMode, VisualKey[]>;
   visuals: VisualAsset[];
 }
 

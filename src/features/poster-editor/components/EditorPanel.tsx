@@ -189,9 +189,16 @@ export function EditorPanel({
                   type="button"
                   key={visual.key}
                   onClick={() => onLibraryVisualChange(visual.key)}
+                  title={visual.description}
                 >
                   <img src={visual.assetPath} alt="" />
-                  <span>{visual.name}</span>
+                  <span>
+                    {visual.name}
+                    {/* 推荐只是提示，不限制选择 */}
+                    {visual.preferredModes.includes(state.mode) ? (
+                      <em className="gallery-tag">推荐</em>
+                    ) : null}
+                  </span>
                 </button>
               ))}
             </div>
@@ -273,6 +280,15 @@ export function EditorPanel({
                   <img src={state.aiGeneratedDataUrl} alt="AI 生成预览" />
                   <span className="ai-preview-label">已生成</span>
                 </div>
+              ) : null}
+              {state.generationTrace ? (
+                <p className="field-hint trace-hint">
+                  按关键词命中「{state.generationTrace.sceneName}」场景模板
+                  {state.generationTrace.matchedCategories.length
+                    ? `（${state.generationTrace.matchedCategories.join("、")}）`
+                    : "（未命中关键词，按当前海报类型兜底）"}
+                  。出图方向不对时，先调整上方的功能关键词。
+                </p>
               ) : null}
               <button
                 type="button"

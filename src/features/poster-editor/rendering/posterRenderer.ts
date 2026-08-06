@@ -13,7 +13,6 @@ import type {
 
 export type PosterImages = {
   featureBg: HTMLImageElement;
-  aiBg: HTMLImageElement;
   logo: HTMLImageElement;
   logoAi: HTMLImageElement;
   productBadge: HTMLImageElement;
@@ -346,37 +345,6 @@ export function renderPoster(canvas: HTMLCanvasElement, input: PosterRenderInput
     ctx.fillStyle = theme.notice.color;
     ctx.font = font(72, 800, false);
     ctx.fillText(val("notice"), 320, 1725);
-  }
-
-  function drawTag(text: string, titleX: number, titleY: number, titleWidth: number) {
-    ctx.font = font(52, 800, false);
-    const tagWidth = Math.max(255, Math.ceil(ctx.measureText(text).width + 70));
-    const tagHeight = 120;
-    const titleRight = titleX + titleWidth;
-    const pointerX = Math.min(3200, Math.max(titleX + 920, titleRight - 42));
-    const x = Math.max(titleX + 900, pointerX - 54);
-    const y = titleY - 170;
-    const pointerTop = y + tagHeight - 4;
-    ctx.save();
-    ctx.shadowColor = "rgba(210, 117, 35, 0.42)";
-    ctx.shadowBlur = 34;
-    ctx.shadowOffsetY = 26;
-    const fill = ctx.createLinearGradient(x, y, x + tagWidth, y + tagHeight);
-    fill.addColorStop(0, "#ffd33f");
-    fill.addColorStop(0.46, "#ffb43d");
-    fill.addColorStop(1, "#ff722c");
-    roundRect(x, y, tagWidth, tagHeight, 10, fill);
-    ctx.beginPath();
-    ctx.moveTo(pointerX, pointerTop);
-    ctx.lineTo(pointerX + 44, pointerTop);
-    ctx.lineTo(pointerX + 18, pointerTop + 54);
-    ctx.closePath();
-    ctx.fillStyle = fill;
-    ctx.fill();
-    ctx.shadowColor = "transparent";
-    ctx.fillStyle = "#fff";
-    ctx.fillText(text, x + 30, y + 78);
-    ctx.restore();
   }
 
 

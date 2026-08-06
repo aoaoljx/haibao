@@ -1,6 +1,7 @@
+// 注意：AI 版海报的背景是代码里画的渐变（见 posterRenderer 的 POSTER_THEMES），
+// 不再加载 ai-background.png——它曾被下载却从未绘制，白白拖慢首屏。
 export const posterAssetSources = {
   featureBg: "/poster-assets/feature-background.png",
-  aiBg: "/poster-assets/ai-background.png",
   logo: "/poster-assets/logo.png",
   logoAi: "/poster-assets/logo-ai.png",
   productBadge: "/poster-assets/product-badge.png",

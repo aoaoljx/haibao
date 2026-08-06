@@ -14,7 +14,7 @@ import type {
   VisualKey,
   VisualTextValueMap
 } from "@/shared/poster/types";
-import { generateVisualImage } from "@/services/visual-generation";
+import { generateVisualImage, type VisualGenerationTrace } from "@/services/visual-generation";
 
 type GraphicTextByMode = Record<PosterMode, Record<VisualKey, VisualTextValueMap>>;
 
@@ -30,6 +30,7 @@ export interface PosterEditorState {
   keywords: string;
   providerConfig: ImageProviderConfig;
   removeBackground: boolean;
+  generationTrace: VisualGenerationTrace | null;
   statusMessage: string;
   statusKind: "" | "ok" | "error";
   aiGeneratedImage: HTMLImageElement | null;
@@ -123,6 +124,9 @@ export function usePosterEditor() {
   });
   // 模型不产透明底时在客户端去背。默认开启；万一去背伤到主体，运营可以关掉重试。
   const [removeBackground, setRemoveBackground] = useState(true);
+  // Prompt Engine 命中的场景与类目。规则引擎本来就算好了，摊开给运营看，
+  // 出图不对时能判断是关键词没写对还是模型不给力。
+  const [generationTrace, setGenerationTrace] = useState<VisualGenerationTrace | null>(null);
   const [statusMessage, setStatusMessage] = useState("");
   const [statusKind, setStatusKind] = useState<"" | "ok" | "error">("");
   const [aiGeneratedImageByMode, setAiGeneratedImageByMode] = useState<
@@ -169,6 +173,7 @@ export function usePosterEditor() {
       keywords: keywordTouchedByMode[mode] ? keywordsByMode[mode] : deriveKeywords(copy),
       providerConfig,
       removeBackground,
+      generationTrace,
       statusMessage,
       statusKind,
       aiGeneratedImage: aiGeneratedImageByMode[mode],
@@ -185,6 +190,7 @@ export function usePosterEditor() {
       mode,
       providerConfig,
       removeBackground,
+      generationTrace,
       statusKind,
       statusMessage,
       uploadedFileNameByMode,
@@ -448,6 +454,8 @@ export function usePosterEditor() {
         ...current,
         [mode]: "ai"
       }));
+
+      setGenerationTrace(result.trace);
 
       const modelLabel = result.image.model || providerConfig.provider;
       setStatus(
