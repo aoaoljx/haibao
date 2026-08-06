@@ -126,6 +126,24 @@ describe("removeBorderBackground", () => {
     expect(stats.removedRatio).toBe(0);
   });
 
+  /**
+   * 回归：默认容差别再调高。
+   *
+   * 海报的玻璃拟态主体与浅色背景几乎同色，真实出图上容差 16 就会把
+   * 玻璃面板打出大洞，32 会吃掉大半。这条用一个"主体与背景差异很小"
+   * 的合成图把这个边界钉住。
+   */
+  it("默认容差足够保守，不会吃掉与背景接近的半透明主体", () => {
+    const image = createImage(40, 40, [240, 245, 250]);
+    // 主体只比背景深一点点，模拟浅蓝玻璃面板
+    fillRect(image, 12, 12, 16, 16, [225, 233, 244]);
+
+    removeBorderBackground(image.data, image.width, image.height);
+
+    expect(alphaAt(image, 0, 0)).toBe(0); // 背景照去
+    expect(alphaAt(image, 20, 20)).toBe(255); // 主体必须完整保留
+  });
+
   it("容差越大去得越多", () => {
     const build = () => {
       const image = createImage(40, 40, [255, 255, 255]);

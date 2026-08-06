@@ -64,11 +64,13 @@ export async function generateVisualImage(
     request.providerConfig
   );
 
-  // 海报右侧图形必须透明底。模型声明不支持透明时在客户端补一次去背，
+  // 海报右侧图形必须透明底。没拿到透明底就在客户端补一次去背，
   // 否则贴到海报上就是一个不透明色块。
-  const definition = getImageProviderDefinition(request.providerConfig.provider);
+  //
+  // 判断依据是本次调用的**实际结果**而不是 Provider 的静态声明——
+  // 同一个 Provider 指向官方 API 还是中转站，能力可能不同。
   const shouldRemoveBackground =
-    request.removeBackground !== false && !definition.supportsTransparentBackground;
+    request.removeBackground !== false && !image.transparentBackground;
 
   if (!shouldRemoveBackground) {
     return { image, trace: plan.trace, backgroundRemoved: false };

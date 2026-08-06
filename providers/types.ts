@@ -56,6 +56,14 @@ export type ImageMimeType = "image/png" | "image/webp" | "image/jpeg";
 
 export interface GenerateImageResult {
   provider: ImageProviderId;
+  /**
+   * 这张图**实际**是不是透明底。
+   *
+   * 注意与 `ImageProviderDefinition.supportsTransparentBackground` 的区别：
+   * 那个是静态声明，这个是本次调用的真实结果。同一个 Provider 指向不同端点
+   * （官方 API vs 中转站）能力可能不同，所以要不要去背必须看这个值。
+   */
+  transparentBackground: boolean;
   mimeType: ImageMimeType;
   base64: string;
   dataUrl: string;

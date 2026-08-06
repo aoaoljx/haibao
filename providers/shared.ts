@@ -97,6 +97,8 @@ export function createImageResult(params: {
   provider: GenerateImageResult["provider"];
   base64: string;
   mimeType: ImageMimeType;
+  /** 本次调用是否真的拿到了透明底。默认 false —— 宁可多去一次背，也不要漏 */
+  transparentBackground?: boolean;
   model?: string;
   width?: number;
   height?: number;
@@ -104,6 +106,7 @@ export function createImageResult(params: {
 }): GenerateImageResult {
   return {
     provider: params.provider,
+    transparentBackground: params.transparentBackground ?? false,
     mimeType: params.mimeType,
     base64: params.base64,
     dataUrl: `data:${params.mimeType};base64,${params.base64}`,

@@ -3,7 +3,9 @@ import {
   API_PROXY_ENTRIES,
   buildViteProxyConfig,
   proxyTargetOrigin,
+  resolveBaseUrl,
   resolveConfiguredProviders,
+  splitBaseUrl,
   stripProxyPrefix,
   toProxyPath,
   type ViteProxyEntryConfig
@@ -178,5 +180,69 @@ describe("resolveConfiguredProviders", () => {
         expect(IMAGE_PROVIDER_IDS).toContain(provider);
       }
     }
+  });
+});
+
+
+describe("端点地址可配置（对接中转站 / Azure / 自建服务）", () => {
+  const RELAY = "https://relay.example.com/v1";
+
+  it("拆出转发目标 origin 与客户端要带的路径前缀", () => {
+    expect(splitBaseUrl(RELAY)).toEqual({
+      origin: "https://relay.example.com",
+      apiPath: "/v1"
+    });
+  });
+
+  it("端点带多级路径时也能拆对", () => {
+    expect(splitBaseUrl("https://x.com/openai/v1/")).toEqual({
+      origin: "https://x.com",
+      apiPath: "/openai/v1"
+    });
+  });
+
+  it("端点在根路径时 apiPath 为空", () => {
+    expect(splitBaseUrl("https://x.com")).toEqual({ origin: "https://x.com", apiPath: "" });
+  });
+
+  it("配了 VITE_OPENAI_BASE_URL 后转发到中转站而非 OpenAI 官方", () => {
+    const config = buildViteProxyConfig({ VITE_OPENAI_BASE_URL: RELAY });
+    expect(config["/api/openai"].target).toBe("https://relay.example.com");
+  });
+
+  it("未配置时仍走 OpenAI 官方", () => {
+    expect(buildViteProxyConfig({})["/api/openai"].target).toBe("https://api.openai.com");
+  });
+
+  it("空白值不算配置，回落到默认端点", () => {
+    const config = buildViteProxyConfig({ VITE_OPENAI_BASE_URL: "   " });
+    expect(config["/api/openai"].target).toBe("https://api.openai.com");
+  });
+
+  it("改端点不影响其它 Provider 的转发目标", () => {
+    const config = buildViteProxyConfig({ VITE_OPENAI_BASE_URL: RELAY });
+    expect(config["/api/dashscope"].target).toBe("https://dashscope.aliyuncs.com");
+    expect(config["/api/replicate"].target).toBe("https://api.replicate.com");
+  });
+
+  it("密钥仍按原 Provider 注入，换端点不影响鉴权", () => {
+    const config = buildViteProxyConfig({
+      VITE_OPENAI_BASE_URL: RELAY,
+      OPENAI_API_KEY: "sk-relay"
+    });
+    expect(captureInjectedHeaders(config["/api/openai"])).toEqual({
+      Authorization: "Bearer sk-relay"
+    });
+  });
+
+  it("端点地址变量带 VITE_ 前缀——它不是机密，客户端要读它拼路径", () => {
+    const entry = API_PROXY_ENTRIES.find((e) => e.proxyPrefix === "/api/openai");
+    expect(entry?.baseUrlEnvVar).toBe("VITE_OPENAI_BASE_URL");
+  });
+
+  it("resolveBaseUrl 的优先级：环境变量 > 默认值", () => {
+    const entry = API_PROXY_ENTRIES.find((e) => e.proxyPrefix === "/api/openai")!;
+    expect(resolveBaseUrl(entry, { VITE_OPENAI_BASE_URL: RELAY })).toBe(RELAY);
+    expect(resolveBaseUrl(entry, {})).toBe("https://api.openai.com/v1");
   });
 });

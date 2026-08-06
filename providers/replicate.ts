@@ -79,7 +79,7 @@ export function createReplicateProvider(): ImageProviderAdapter {
 
       const { createReplicate } = await import("@ai-sdk/replicate");
       const replicate = createReplicate({
-        baseURL: proxiedBaseUrl(API_HOST, "/v1"),
+        baseURL: proxiedBaseUrl(API_HOST),
         // 真正的令牌由 vite 代理注入并覆盖这个头，这里只是满足 SDK 的必填校验
         apiToken: "injected-by-dev-server"
       });

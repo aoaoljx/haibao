@@ -1,4 +1,4 @@
-import { API_PROXY_ENTRIES } from "./apiProxyMap";
+import { API_PROXY_ENTRIES, splitBaseUrl } from "./apiProxyMap";
 import { createImageResult, normalizeMimeType } from "./shared";
 import type { GenerateImageResult, ImageProviderId } from "./types";
 
@@ -27,6 +27,8 @@ export interface AiSdkGenerationParams {
   size?: `${number}x${number}`;
   aspectRatio?: `${number}:${number}`;
   providerOptions?: ProviderOptionsMap;
+  /** 本次是否按透明底请求。会原样反映到结果里，决定后续要不要客户端去背 */
+  transparentBackground?: boolean;
   timeoutMs: number;
   /** 用于回报的期望尺寸。模型未必严格遵守，仅作参考 */
   width?: number;
@@ -59,6 +61,7 @@ export async function runAiSdkImageGeneration(
 
     return createImageResult({
       provider: params.provider,
+      transparentBackground: params.transparentBackground ?? false,
       base64: image.base64,
       // 用模型实际返回的类型，而不是一厢情愿写死 png——
       // dataUrl 前缀与真实字节不符会导致解码异常
@@ -102,13 +105,29 @@ export function translateAiSdkError(
  * 拼出走同源代理的 baseURL。
  *
  * AI SDK 要求绝对地址，而我们要让请求经过 vite 代理——密钥在那里注入，
- * 浏览器不持有凭据。所以取当前 origin 加上该 host 对应的代理前缀。
+ * 浏览器不持有凭据。所以用「当前 origin + 代理前缀 + 端点的路径部分」。
+ *
+ * 路径部分必须由客户端带上：转发层只负责把前缀换成目标 origin，
+ * 剩下的原样透传。两边都从同一个端点配置推导，避免不同步。
+ *
+ *   端点 https://codexone.aieania.tech/v1
+ *   → 客户端 baseURL  http://127.0.0.1:3000/api/openai/v1
+ *   → 转发后          https://codexone.aieania.tech/v1/images/generations
  */
-export function proxiedBaseUrl(host: string, apiPath: string): string {
+export function proxiedBaseUrl(host: string): string {
   const entry = API_PROXY_ENTRIES.find((item) => item.host === host);
   if (!entry) {
     throw new Error(`${host} 未登记在 apiProxyMap 中，无法走同源代理`);
   }
+
+  // 端点地址不是机密，用 VITE_ 前缀让客户端也能读到
+  const configured = entry.baseUrlEnvVar
+    ? (import.meta.env[entry.baseUrlEnvVar] as string | undefined)
+    : undefined;
+  const { apiPath } = splitBaseUrl(
+    configured?.trim() || entry.defaultBaseUrl || `https://${entry.host}`
+  );
+
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   return `${origin}${entry.proxyPrefix}${apiPath}`;
 }

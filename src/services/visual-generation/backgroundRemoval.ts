@@ -27,7 +27,19 @@ export interface BackgroundRemovalStats {
   removedRatio: number;
 }
 
-const DEFAULT_TOLERANCE = 32;
+/**
+ * 默认容差偏保守（8 而不是更宽松的值），是被真实出图逼出来的。
+ *
+ * 海报要的 2.5D 玻璃拟态风格，主体本身就是浅蓝半透明玻璃，
+ * 和它要被抠掉的浅色背景几乎同色。实测某张 gpt-image 出图：
+ *   容差 8  → 去除 37%，主体完整
+ *   容差 16 → 去除 52%，玻璃面板被打出大洞
+ *   容差 32 → 去除 73%，上半部分面板基本没了
+ *
+ * 宁可边缘留一点背景残影，也不能把主体吃掉——残影在浅色海报上几乎看不见，
+ * 主体缺块则一眼就废。需要更狠时用 VITE_DEBG_TOLERANCE 调。
+ */
+const DEFAULT_TOLERANCE = 8;
 const DEFAULT_FEATHER_SCALE = 1.8;
 
 /**

@@ -31,6 +31,37 @@ export interface ApiProxyEntry {
   authHeader: { name: string; scheme: "bearer" | "raw" };
   /** 依赖这个 API 的 Provider。用于推导「哪些模型已配好可用」 */
   providers: readonly ImageProviderId[];
+  /**
+   * 允许用环境变量整体替换端点地址（含路径），用于对接 OpenAI 兼容的
+   * 中转站、Azure、自建 vLLM 等。
+   *
+   * 该变量带 VITE_ 前缀是刻意的——端点地址不是机密，客户端也需要读它
+   * 来拼出请求路径。真正的密钥仍然只在服务端。
+   */
+  baseUrlEnvVar?: string;
+  /** 默认端点地址，含 API 路径前缀 */
+  defaultBaseUrl?: string;
+}
+
+/**
+ * 解析端点地址，拆成「转发目标 origin」和「客户端要带的路径前缀」。
+ *
+ * 两边必须来自同一个配置值，否则又会出现改写端与转发端不同步的静默 404。
+ *
+ * https://codexone.aieania.tech/v1
+ *   → origin  https://codexone.aieania.tech   （proxy 转发目标）
+ *   → apiPath /v1                             （客户端 baseURL 里带上）
+ */
+export function splitBaseUrl(baseUrl: string): { origin: string; apiPath: string } {
+  const url = new URL(baseUrl);
+  const apiPath = url.pathname.replace(/\/+$/, "");
+  return { origin: url.origin, apiPath };
+}
+
+/** 取某个代理项当前生效的端点地址 */
+export function resolveBaseUrl(entry: ApiProxyEntry, env: ServerEnv = {}): string {
+  const override = entry.baseUrlEnvVar ? env[entry.baseUrlEnvVar]?.trim() : undefined;
+  return override || entry.defaultBaseUrl || `https://${entry.host}`;
 }
 
 const BEARER = { name: "Authorization", scheme: "bearer" } as const;
@@ -48,14 +79,18 @@ export const API_PROXY_ENTRIES: readonly ApiProxyEntry[] = [
     proxyPrefix: "/api/openai",
     apiKeyEnvVar: "OPENAI_API_KEY",
     authHeader: BEARER,
-    providers: ["gpt-image"]
+    providers: ["gpt-image"],
+    // 指向任何 OpenAI 兼容端点：中转站、Azure、自建 vLLM 等
+    baseUrlEnvVar: "VITE_OPENAI_BASE_URL",
+    defaultBaseUrl: "https://api.openai.com/v1"
   },
   {
     host: "api.replicate.com",
     proxyPrefix: "/api/replicate",
     apiKeyEnvVar: "REPLICATE_API_TOKEN",
     authHeader: BEARER,
-    providers: ["replicate"]
+    providers: ["replicate"],
+    defaultBaseUrl: "https://api.replicate.com/v1"
   },
   {
     host: "generativelanguage.googleapis.com",
@@ -168,9 +203,11 @@ export function buildViteProxyConfig(
 
   for (const entry of entries) {
     const apiKey = env[entry.apiKeyEnvVar]?.trim();
+    // 转发到当前生效的端点 origin。路径前缀由客户端带上，见 splitBaseUrl 的说明。
+    const { origin } = splitBaseUrl(resolveBaseUrl(entry, env));
 
     config[entry.proxyPrefix] = {
-      target: proxyTargetOrigin(entry),
+      target: origin,
       changeOrigin: true,
       secure: false,
       rewrite: (path: string) => stripProxyPrefix(path, entry.proxyPrefix),

@@ -24,10 +24,21 @@ export interface RemoveImageBackgroundResult {
 const MIN_PLAUSIBLE_REMOVED_RATIO = 0.02;
 const MAX_PLAUSIBLE_REMOVED_RATIO = 0.95;
 
+/** 允许用环境变量覆盖容差，方便按实际出图风格微调 */
+function envTolerance(): number | undefined {
+  const raw = import.meta.env.VITE_DEBG_TOLERANCE;
+  const value = raw === undefined ? Number.NaN : Number(raw);
+  return Number.isFinite(value) && value > 0 ? value : undefined;
+}
+
 export async function removeImageBackground(
   dataUrl: string,
   options: BackgroundRemovalOptions = {}
 ): Promise<RemoveImageBackgroundResult | null> {
+  const resolved: BackgroundRemovalOptions = {
+    tolerance: envTolerance(),
+    ...options
+  };
   const image = await loadImage(dataUrl);
   const width = image.naturalWidth;
   const height = image.naturalHeight;
@@ -51,7 +62,7 @@ export async function removeImageBackground(
     return null;
   }
 
-  const stats = removeBorderBackground(imageData.data, width, height, options);
+  const stats = removeBorderBackground(imageData.data, width, height, resolved);
 
   if (
     stats.removedRatio < MIN_PLAUSIBLE_REMOVED_RATIO ||
