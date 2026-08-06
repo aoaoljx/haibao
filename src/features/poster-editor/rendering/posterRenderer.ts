@@ -1,6 +1,8 @@
 import { fitContain } from "@/shared/poster/geometry";
+import { graphicTextValue } from "@/shared/poster/graphicText";
 import { getVisualByKey } from "@/shared/poster/visualMapping";
 import type {
+  GraphicSource,
   PosterCopy,
   PosterMode,
   VisualAsset,
@@ -19,11 +21,27 @@ export type PosterImages = {
 
 export interface PosterRenderInput {
   aiGeneratedImage?: HTMLImageElement | null;
+  /** 运营上传的图片，graphicSource 为 upload 时使用 */
+  uploadedImage?: HTMLImageElement | null;
+  /** 右侧图形取自哪里。渲染必须跟着它走，否则界面选择与画布不一致 */
+  graphicSource: GraphicSource;
   mode: PosterMode;
   copy: PosterCopy;
   visualKey: VisualKey;
   graphicText: Record<VisualKey, VisualTextValueMap>;
   images: PosterImages;
+}
+
+/**
+ * 决定右侧图形用哪张图。
+ *
+ * 只有素材图库的图能叠加图形文字——文字槽位坐标是按这几张固定素材标定的，
+ * 套到 AI 出图或用户上传的图上只会错位。
+ */
+interface ResolvedVisualSource {
+  image: HTMLImageElement;
+  /** 是否为素材库资源（决定能否叠加图形文字，以及是否等比缩放） */
+  isLibraryAsset: boolean;
 }
 
 export function renderPoster(canvas: HTMLCanvasElement, input: PosterRenderInput) {
@@ -63,7 +81,7 @@ export function renderPoster(canvas: HTMLCanvasElement, input: PosterRenderInput
     }
     drawFeaturePoints(1180, 430);
     if (val("notice")) drawNotice();
-    drawVisual();
+    drawVisualInto(null);
   }
 
   /**
@@ -139,7 +157,8 @@ export function renderPoster(canvas: HTMLCanvasElement, input: PosterRenderInput
     drawBottomTagline();
 
     // 10. 右侧图形 - 与功能发布海报相同位置
-    drawVisualDark();
+    // 深色海报下给图形加一圈辉光，与背景拉开层次
+    drawVisualInto({ color: "rgba(112, 38, 244, 0.5)", blur: 60 });
   }
 
   function drawTechParticles() {
@@ -228,28 +247,55 @@ export function renderPoster(canvas: HTMLCanvasElement, input: PosterRenderInput
   /**
    * 右侧图形 - 与功能发布海报相同位置
    */
-  function drawVisualDark() {
+  /**
+   * 解析当前该画哪张图。
+   *
+   * 选中的来源没有可用图片时回落到素材库——运营刚切到「AI 自动生成」还没点生成、
+   * 或切到「上传图片」还没选文件时，右侧仍然有东西可看，而不是开天窗。
+   */
+  function resolveVisualSource(): ResolvedVisualSource {
     const visual = getVisualByKey(input.visualKey);
-    const aiImg = input.aiGeneratedImage;
-    const box = visual.posterBounds; // 使用相同的 posterBounds
 
-    if (aiImg) {
-      // 等比放入槽位：模型出图比例和槽位对不上时留白，不拉伸
-      const fitted = fitContain(aiImg.naturalWidth, aiImg.naturalHeight, box);
-      ctx.save();
-      ctx.shadowColor = "rgba(112, 38, 244, 0.5)";
-      ctx.shadowBlur = 60;
-      ctx.drawImage(aiImg, fitted.x, fitted.y, fitted.w, fitted.h);
-      ctx.restore();
-      return;
+    if (input.graphicSource === "ai" && input.aiGeneratedImage) {
+      return { image: input.aiGeneratedImage, isLibraryAsset: false };
     }
 
-    const img = images[visual.key];
+    if (input.graphicSource === "upload" && input.uploadedImage) {
+      return { image: input.uploadedImage, isLibraryAsset: false };
+    }
+
+    return { image: images[visual.key], isLibraryAsset: true };
+  }
+
+  /**
+   * 右侧图形的统一绘制入口。深浅两版海报共用，只有阴影不同——
+   * 此前是两份复制的实现，改一处必须记得改另一处。
+   */
+  function drawVisualInto(shadow: { color: string; blur: number } | null) {
+    const visual = getVisualByKey(input.visualKey);
+    const box = visual.posterBounds;
+    const { image, isLibraryAsset } = resolveVisualSource();
+
     ctx.save();
-    ctx.shadowColor = "rgba(37, 139, 248, 0.4)";
-    ctx.shadowBlur = 50;
-    ctx.drawImage(img, box.x, box.y, box.w, box.h);
+    if (shadow) {
+      ctx.shadowColor = shadow.color;
+      ctx.shadowBlur = shadow.blur;
+    }
+
+    if (isLibraryAsset) {
+      // 素材库资源就是按槽位裁好的，直接铺满
+      ctx.drawImage(image, box.x, box.y, box.w, box.h);
+    } else {
+      // 外来图片比例不可控，等比放入并居中，绝不拉伸
+      const fitted = fitContain(image.naturalWidth, image.naturalHeight, box);
+      ctx.drawImage(image, fitted.x, fitted.y, fitted.w, fitted.h);
+    }
     ctx.restore();
+
+    // 文字槽位是按素材库图片标定的，只有用素材库图时才叠加
+    if (isLibraryAsset) {
+      drawGraphicText(visual, image);
+    }
   }
 
   function drawFeaturePoints(startY: number, maxHeight: number) {
@@ -332,22 +378,6 @@ export function renderPoster(canvas: HTMLCanvasElement, input: PosterRenderInput
     ctx.restore();
   }
 
-  function drawVisual() {
-    const visual = getVisualByKey(input.visualKey);
-    const aiImg = input.aiGeneratedImage;
-    const box = visual.posterBounds;
-
-    if (aiImg) {
-      // 等比放入槽位：模型出图比例和槽位对不上时留白，不拉伸
-      const fitted = fitContain(aiImg.naturalWidth, aiImg.naturalHeight, box);
-      ctx.drawImage(aiImg, fitted.x, fitted.y, fitted.w, fitted.h);
-      return;
-    }
-
-    const img = images[visual.key];
-    ctx.drawImage(img, box.x, box.y, box.w, box.h);
-    drawGraphicText(visual, img);
-  }
 
   function drawGraphicText(visual: VisualAsset, img: HTMLImageElement) {
     if (!visual.editableTextFields.length) return;
@@ -360,7 +390,7 @@ export function renderPoster(canvas: HTMLCanvasElement, input: PosterRenderInput
     const ty = (y: number) => box.y + y * scaleY;
     ctx.save();
     for (const slot of visual.renderSlots) {
-      const text = graphicTextValue(visual, slot.fieldId);
+      const text = graphicTextValue(visual, input.graphicText[visual.key], slot.fieldId);
       drawGraphicSlot(visual, slot, text, tx(slot.x), ty(slot.y), scaleX);
     }
     ctx.restore();
@@ -479,11 +509,6 @@ export function renderPoster(canvas: HTMLCanvasElement, input: PosterRenderInput
   function val(field: keyof PosterCopy) {
     const value = copy[field];
     return typeof value === "string" ? value.trim() : "";
-  }
-
-  function graphicTextValue(visual: VisualAsset, fieldId: string) {
-    const field = visual.editableTextFields.find((item) => item.id === fieldId);
-    return input.graphicText[visual.key]?.[fieldId] ?? field?.defaultValue ?? "";
   }
 
   function compactToWidth(text: string, maxWidth: number) {

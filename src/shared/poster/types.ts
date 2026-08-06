@@ -9,6 +9,9 @@ export type VisualKey =
 
 export type VisualSelection = VisualKey | "auto";
 
+/** 右侧图形从哪里来。渲染层与编辑器共用，因此放在领域类型里。 */
+export type GraphicSource = "ai" | "library" | "upload";
+
 export type TextAlign = "left" | "center" | "right";
 
 export type TextAnchor = "baseline" | "center";

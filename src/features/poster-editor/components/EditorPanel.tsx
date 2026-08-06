@@ -1,8 +1,6 @@
-import type {
-  GraphicOverlayText,
-  GraphicSource,
-  PosterEditorState
-} from "../hooks/usePosterEditor";
+import type { PosterEditorState } from "../hooks/usePosterEditor";
+import { graphicTextValue } from "@/shared/poster/graphicText";
+import { getVisualByKey } from "@/shared/poster/visualMapping";
 import {
   getImageProviderDefinition,
   getManualApiConfigFields,
@@ -11,7 +9,7 @@ import {
   type ImageProviderId,
   type ProviderConfigField
 } from "@providers";
-import type { PosterCopy, VisualAsset, VisualKey } from "@/shared/poster/types";
+import type { GraphicSource, PosterCopy, VisualAsset, VisualKey } from "@/shared/poster/types";
 import { FeaturePointList } from "./FeaturePointList";
 
 interface EditorPanelProps {
@@ -30,7 +28,7 @@ interface EditorPanelProps {
     field: keyof ImageProviderConfig | `extra.${string}`,
     value: string
   ) => void;
-  onGraphicOverlayTextChange: (field: keyof GraphicOverlayText, value: string) => void;
+  onGraphicTextFieldChange: (fieldId: string, value: string) => void;
   onRemoveBackgroundChange: (value: boolean) => void;
   onGenerateVisual: () => void;
 }
@@ -106,12 +104,14 @@ export function EditorPanel({
   onKeywordsChange,
   onProviderChange,
   onProviderConfigFieldChange,
-  onGraphicOverlayTextChange,
+  onGraphicTextFieldChange,
   onRemoveBackgroundChange,
   onGenerateVisual
 }: EditorPanelProps) {
   const providerFields = getManualApiConfigFields(state.providerConfig.provider);
   const providerDefinition = getImageProviderDefinition(state.providerConfig.provider);
+  const activeVisual = getVisualByKey(state.visualKey);
+  const activeValues = state.graphicText[state.visualKey];
 
   return (
     <aside className="panel">
@@ -296,34 +296,27 @@ export function EditorPanel({
 
       <div className="panel-section">
         <h2>图形文字</h2>
-        <label>
-          顶部文字
-          <input
-            value={state.graphicOverlayText.topText}
-            onChange={(event) => onGraphicOverlayTextChange("topText", event.target.value)}
-          />
-        </label>
-        <label>
-          标签
-          <input
-            value={state.graphicOverlayText.label}
-            onChange={(event) => onGraphicOverlayTextChange("label", event.target.value)}
-          />
-        </label>
-        <label>
-          按钮文字
-          <input
-            value={state.graphicOverlayText.buttonText}
-            onChange={(event) => onGraphicOverlayTextChange("buttonText", event.target.value)}
-          />
-        </label>
-        <label>
-          徽章文字
-          <input
-            value={state.graphicOverlayText.badgeText}
-            onChange={(event) => onGraphicOverlayTextChange("badgeText", event.target.value)}
-          />
-        </label>
+        {state.graphicSource === "library" ? (
+          activeVisual.editableTextFields.length ? (
+            activeVisual.editableTextFields.map((field) => (
+              <label key={field.id}>
+                {field.label}
+                <input
+                  value={graphicTextValue(activeVisual, activeValues, field.id)}
+                  maxLength={field.maxLength}
+                  onChange={(event) => onGraphicTextFieldChange(field.id, event.target.value)}
+                />
+              </label>
+            ))
+          ) : (
+            <p className="field-hint">当前图形没有可编辑的文字槽位。</p>
+          )
+        ) : (
+          <p className="field-hint">
+            图形文字只能叠加在素材图库的图形上——文字位置是按那几张素材逐个标定的，
+            套到 AI 生成图或上传图上会错位。切换到「素材图库」即可编辑。
+          </p>
+        )}
       </div>
     </aside>
   );

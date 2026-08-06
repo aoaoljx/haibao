@@ -1,27 +1,20 @@
-import { useCallback, useMemo, useState, useEffect } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ImageProviderConfig, ImageProviderId } from "@providers";
 import {
   clonePosterCopy,
   createDefaultGraphicTextState,
   posterPresets
 } from "@/shared/poster/defaults";
+import { toPromptTextSlots } from "@/shared/poster/graphicText";
 import { getVisualByKey, visualMapping } from "@/shared/poster/visualMapping";
 import type {
+  GraphicSource,
   PosterCopy,
   PosterMode,
   VisualKey,
   VisualTextValueMap
 } from "@/shared/poster/types";
 import { generateVisualImage } from "@/services/visual-generation";
-
-export type GraphicSource = "ai" | "library" | "upload";
-
-export interface GraphicOverlayText {
-  topText: string;
-  label: string;
-  buttonText: string;
-  badgeText: string;
-}
 
 type GraphicTextByMode = Record<PosterMode, Record<VisualKey, VisualTextValueMap>>;
 
@@ -33,9 +26,9 @@ export interface PosterEditorState {
   graphicSource: GraphicSource;
   libraryVisualKey: VisualKey;
   uploadedFileName: string;
+  uploadedImage: HTMLImageElement | null;
   keywords: string;
   providerConfig: ImageProviderConfig;
-  graphicOverlayText: GraphicOverlayText;
   removeBackground: boolean;
   statusMessage: string;
   statusKind: "" | "ok" | "error";
@@ -92,7 +85,7 @@ export function usePosterEditor() {
   const [mode, setMode] = useState<PosterMode>("feature");
   const [copy, setCopy] = useState<PosterCopy>(() => clonePosterCopy(posterPresets.feature.copy));
   const [visualKey, setVisualKey] = useState<VisualKey>("graphic1");
-  const [graphicTextByMode] = useState<GraphicTextByMode>(() => ({
+  const [graphicTextByMode, setGraphicTextByMode] = useState<GraphicTextByMode>(() => ({
     feature: createDefaultGraphicTextState(),
     ai: createDefaultGraphicTextState()
   }));
@@ -110,6 +103,12 @@ export function usePosterEditor() {
     feature: "",
     ai: ""
   });
+  const [uploadedImageByMode, setUploadedImageByMode] = useState<
+    Record<PosterMode, HTMLImageElement | null>
+  >({
+    feature: null,
+    ai: null
+  });
   const [keywordsByMode, setKeywordsByMode] = useState<Record<PosterMode, string>>({
     feature: deriveKeywords(posterPresets.feature.copy),
     ai: deriveKeywords(posterPresets.ai.copy)
@@ -121,22 +120,6 @@ export function usePosterEditor() {
   const [keywordTouchedByMode, setKeywordTouchedByMode] = useState<Record<PosterMode, boolean>>({
     feature: false,
     ai: false
-  });
-  const [graphicOverlayTextByMode, setGraphicOverlayTextByMode] = useState<
-    Record<PosterMode, GraphicOverlayText>
-  >({
-    feature: {
-      topText: "iDevflow",
-      label: "",
-      buttonText: "提交",
-      badgeText: ""
-    },
-    ai: {
-      topText: "AI",
-      label: "测试用例",
-      buttonText: "生成",
-      badgeText: "beta版"
-    }
   });
   // 模型不产透明底时在客户端去背。默认开启；万一去背伤到主体，运营可以关掉重试。
   const [removeBackground, setRemoveBackground] = useState(true);
@@ -161,6 +144,18 @@ export function usePosterEditor() {
     saveProviderConfig(providerConfig);
   }, [providerConfig]);
 
+  // 卸载时释放上传图片占用的 object URL。
+  // 用 ref 读最新值 + 空依赖，避免把仍在使用的图提前 revoke 掉。
+  const uploadedImagesRef = useRef(uploadedImageByMode);
+  uploadedImagesRef.current = uploadedImageByMode;
+  useEffect(() => {
+    return () => {
+      for (const image of Object.values(uploadedImagesRef.current)) {
+        revokeObjectUrl(image);
+      }
+    };
+  }, []);
+
   const state: PosterEditorState = useMemo(
     () => ({
       mode,
@@ -170,9 +165,9 @@ export function usePosterEditor() {
       graphicSource: graphicSourceByMode[mode],
       libraryVisualKey: libraryVisualByMode[mode],
       uploadedFileName: uploadedFileNameByMode[mode],
+      uploadedImage: uploadedImageByMode[mode],
       keywords: keywordTouchedByMode[mode] ? keywordsByMode[mode] : deriveKeywords(copy),
       providerConfig,
-      graphicOverlayText: graphicOverlayTextByMode[mode],
       removeBackground,
       statusMessage,
       statusKind,
@@ -182,7 +177,6 @@ export function usePosterEditor() {
     }),
     [
       copy,
-      graphicOverlayTextByMode,
       graphicSourceByMode,
       graphicTextByMode,
       keywordTouchedByMode,
@@ -194,6 +188,7 @@ export function usePosterEditor() {
       statusKind,
       statusMessage,
       uploadedFileNameByMode,
+      uploadedImageByMode,
       visualKey,
       aiGeneratedImageByMode,
       aiGeneratedDataUrlByMode,
@@ -289,11 +284,31 @@ export function usePosterEditor() {
   );
 
   const updateUploadedFile = useCallback(
-    (file: File | null) => {
+    async (file: File | null) => {
       setUploadedFileNameByMode((current) => ({
         ...current,
         [mode]: file?.name || ""
       }));
+
+      if (!file) {
+        setUploadedImageByMode((current) => {
+          revokeObjectUrl(current[mode]);
+          return { ...current, [mode]: null };
+        });
+        return;
+      }
+
+      try {
+        const image = await loadImageFromFile(file);
+        setUploadedImageByMode((current) => {
+          // 换图时释放上一张的 object URL，避免长时间使用累积内存
+          revokeObjectUrl(current[mode]);
+          return { ...current, [mode]: image };
+        });
+        setStatus("");
+      } catch {
+        setStatus("图片读取失败，请换一张试试。", "error");
+      }
     },
     [mode]
   );
@@ -354,17 +369,27 @@ export function usePosterEditor() {
     []
   );
 
-  const updateGraphicOverlayText = useCallback(
-    (field: keyof GraphicOverlayText, value: string) => {
-      setGraphicOverlayTextByMode((current) => ({
+  /**
+   * 修改当前图形的某个文字槽位。
+   *
+   * 这里是图形文字的唯一真相源：画布和 Prompt 都读它。
+   * 此前存在两份互不相通的 state——面板改的那份只喂 Prompt，
+   * 画布读的那份没有 setter 永远是默认值，于是"改了看不到变化"。
+   */
+  const updateGraphicTextField = useCallback(
+    (fieldId: string, value: string) => {
+      setGraphicTextByMode((current) => ({
         ...current,
         [mode]: {
           ...current[mode],
-          [field]: value
+          [visualKey]: {
+            ...current[mode][visualKey],
+            [fieldId]: value
+          }
         }
       }));
     },
-    [mode]
+    [mode, visualKey]
   );
 
   const generateVisual = useCallback(async () => {
@@ -390,7 +415,11 @@ export function usePosterEditor() {
         titleDark: copy.titleDark,
         featurePoints: copy.featurePoints,
         keywords: currentKeywords,
-        graphicText: graphicOverlayTextByMode[mode],
+        // 把当前图形的各字段折算成 Prompt 需要的四类槽位
+        graphicText: toPromptTextSlots(
+          getVisualByKey(visualKey),
+          graphicTextByMode[mode][visualKey]
+        ),
         // 按图形最终要落进的槽位反推请求尺寸，避免生成方图后被拉伸
         targetBounds: getVisualByKey(visualKey).posterBounds,
         removeBackground,
@@ -440,7 +469,7 @@ export function usePosterEditor() {
     keywordTouchedByMode,
     keywordsByMode,
     copy,
-    graphicOverlayTextByMode,
+    graphicTextByMode,
     visualKey,
     removeBackground
   ]);
@@ -464,11 +493,37 @@ export function usePosterEditor() {
     updateKeywords,
     updateProvider,
     updateProviderConfigField,
-    updateGraphicOverlayText,
+    updateGraphicTextField,
     updateRemoveBackground: setRemoveBackground,
     generateVisual,
     setStatus
   };
+}
+
+/**
+ * 把上传的文件解码成可直接 drawImage 的图片。
+ *
+ * 用 object URL 而不是 base64 data URL：大图转 base64 会占用可观内存，
+ * 而这张图只在本次会话里画到 canvas 上，不需要序列化。
+ * 代价是必须自己 revoke，见 revokeObjectUrl()。
+ */
+function loadImageFromFile(file: File): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("无法解码上传的图片"));
+    };
+    image.src = url;
+  });
+}
+
+function revokeObjectUrl(image: HTMLImageElement | null) {
+  if (image?.src.startsWith("blob:")) {
+    URL.revokeObjectURL(image.src);
+  }
 }
 
 function deriveKeywords(copy: PosterCopy) {

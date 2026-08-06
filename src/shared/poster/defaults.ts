@@ -1,3 +1,4 @@
+import { createDefaultTextValues } from "./graphicText";
 import { visualMapping } from "./visualMapping";
 import type {
   PosterCopy,
@@ -53,20 +54,6 @@ export function clonePosterCopy(copy: PosterCopy): PosterCopy {
 
 export function createDefaultGraphicTextState(): Record<VisualKey, VisualTextValueMap> {
   return Object.fromEntries(
-    visualMapping.visuals.map((visual) => [
-      visual.key,
-      Object.fromEntries(
-        visual.editableTextFields.map((field) => [field.id, field.defaultValue])
-      )
-    ])
+    visualMapping.visuals.map((visual) => [visual.key, createDefaultTextValues(visual)])
   ) as Record<VisualKey, VisualTextValueMap>;
-}
-
-export function createTouchedGraphicTextState(): Record<VisualKey, Record<string, boolean>> {
-  return Object.fromEntries(
-    visualMapping.visuals.map((visual) => [
-      visual.key,
-      Object.fromEntries(visual.editableTextFields.map((field) => [field.id, false]))
-    ])
-  ) as Record<VisualKey, Record<string, boolean>>;
 }

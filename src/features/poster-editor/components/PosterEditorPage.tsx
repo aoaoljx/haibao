@@ -35,8 +35,10 @@ export function PosterEditorPage() {
         copy: editor.state.copy,
         visualKey: editor.state.visualKey,
         graphicText: editor.state.graphicText,
+        graphicSource: editor.state.graphicSource,
         images: assets.images,
-        aiGeneratedImage: editor.state.aiGeneratedImage
+        aiGeneratedImage: editor.state.aiGeneratedImage,
+        uploadedImage: editor.state.uploadedImage
       });
       const url = canvasRef.current.toDataURL("image/png");
       setExportState({ url, filename });
@@ -72,7 +74,7 @@ export function PosterEditorPage() {
           onKeywordsChange={editor.updateKeywords}
           onProviderChange={editor.updateProvider}
           onProviderConfigFieldChange={editor.updateProviderConfigField}
-          onGraphicOverlayTextChange={editor.updateGraphicOverlayText}
+          onGraphicTextFieldChange={editor.updateGraphicTextField}
           onRemoveBackgroundChange={editor.updateRemoveBackground}
           onGenerateVisual={editor.generateVisual}
         />

@@ -17,10 +17,22 @@ export function PosterCanvas({ canvasRef, state, images }: PosterCanvasProps) {
       copy: state.copy,
       visualKey: state.visualKey,
       graphicText: state.graphicText,
+      graphicSource: state.graphicSource,
       images,
-      aiGeneratedImage: state.aiGeneratedImage
+      aiGeneratedImage: state.aiGeneratedImage,
+      uploadedImage: state.uploadedImage
     });
-  }, [canvasRef, images, state.copy, state.graphicText, state.mode, state.visualKey, state.aiGeneratedImage]);
+  }, [
+    canvasRef,
+    images,
+    state.copy,
+    state.graphicText,
+    state.graphicSource,
+    state.mode,
+    state.visualKey,
+    state.aiGeneratedImage,
+    state.uploadedImage
+  ]);
 
   return <canvas ref={canvasRef} id="poster" width={3840} height={1920} />;
 }
