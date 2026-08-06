@@ -129,6 +129,52 @@ describe("AI 生成后画布要显示那张图", () => {
     });
   });
 
+  /**
+   * 回归：连续生成两次，画布必须换成第二张。
+   * 用户反馈「每次生成的图片都一模一样」，而模型端已验证每次输出确实不同，
+   * 所以嫌疑在这一层。
+   */
+  it("连续生成两次，画布拿到的是第二张而不是第一张", async () => {
+    const first = "data:image/png;base64,FIRSTIMAGE";
+    const second = "data:image/png;base64,SECONDIMAGE";
+
+    const makeResult = (dataUrl: string) => ({
+      image: { dataUrl, base64: "x", model: "gpt-image-2", transparentBackground: false },
+      trace: {
+        sceneKey: "code",
+        sceneName: "代码编辑",
+        matchedCategories: [],
+        matchedKeywords: [],
+        extractedKeywords: [],
+        visualElements: []
+      },
+      backgroundRemoved: true
+    });
+
+    generateVisualImageSpy
+      .mockResolvedValueOnce(makeResult(first))
+      .mockResolvedValueOnce(makeResult(second));
+
+    await mountEditor();
+    const button = screen.getByRole("button", { name: /生成图形/ });
+
+    await act(async () => {
+      button.click();
+    });
+    await waitFor(() =>
+      expect((lastRenderInput()?.aiGeneratedImage as { src: string })?.src).toBe(first)
+    );
+
+    await act(async () => {
+      button.click();
+    });
+
+    await waitFor(() => {
+      expect(generateVisualImageSpy).toHaveBeenCalledTimes(2);
+      expect((lastRenderInput()?.aiGeneratedImage as { src: string })?.src).toBe(second);
+    });
+  });
+
   it("生成失败时不把画布清空，仍保留原有图形", async () => {
     generateVisualImageSpy.mockRejectedValue(new Error("模型炸了"));
 

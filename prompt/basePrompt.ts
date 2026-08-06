@@ -24,6 +24,11 @@ export const BASE_NEGATIVE_PROMPT = [
   "杂乱图标",
   "过度装饰",
   "低清晰度",
+  // 模型常把「透明背景」画成表示透明的棋盘格，那片假格子会作为噪点残留
+  "棋盘格",
+  "透明网格",
+  "格子背景",
+  "马赛克底纹",
   "变形Logo",
   "覆盖INOVANCE和iDevFlow品牌区域"
 ] as const;
