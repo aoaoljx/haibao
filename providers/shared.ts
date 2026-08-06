@@ -45,6 +45,46 @@ export function normalizeImageInput(input: GenerateImageInput): Required<
   };
 }
 
+/**
+ * 从模型支持的固定尺寸里挑比例最接近请求值的那个。
+ *
+ * 各家文生图都只接受有限的几种尺寸，和海报槽位的比例不可能次次对上。
+ * 这里只负责挑最接近的，残余误差由渲染层的 fitContain 吸收成透明留白，
+ * 绝不拉伸。
+ *
+ * @param separator 尺寸字符串里的分隔符。千问用全角 ×，OpenAI 用小写 x。
+ */
+export function pickClosestSize(
+  requestedSize: string,
+  supportedSizes: readonly string[],
+  separator = "x"
+): string {
+  const fallback = supportedSizes[0];
+  const requested = parseRatio(requestedSize, "x");
+  if (!requested) return fallback;
+
+  let best = fallback;
+  let bestDiff = Infinity;
+
+  for (const candidate of supportedSizes) {
+    const ratio = parseRatio(candidate, separator);
+    if (!ratio) continue;
+
+    const diff = Math.abs(ratio - requested);
+    if (diff < bestDiff) {
+      bestDiff = diff;
+      best = candidate;
+    }
+  }
+
+  return best;
+}
+
+function parseRatio(size: string, separator: string): number | null {
+  const [w, h] = size.split(separator).map(Number);
+  return w > 0 && h > 0 ? w / h : null;
+}
+
 export function normalizeProviderConfig(config: ImageProviderConfig): ImageProviderConfig {
   return {
     ...config,

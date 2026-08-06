@@ -2,6 +2,7 @@ import {
   createPngResult,
   normalizeImageInput,
   normalizeProviderConfig,
+  pickClosestSize,
   proxyUrl
 } from "./shared";
 import type {
@@ -52,27 +53,9 @@ export const QWEN_PROVIDER: ImageProviderDefinition = {
   defaultModel: DEFAULT_MODEL
 };
 
-/** 将标准 ImageSize 映射为千问支持的尺寸（导出仅为可测） */
+/** 将标准 ImageSize 映射为千问支持的尺寸（导出仅为可测。注意千问用全角 ×） */
 export function mapToQwenSize(size: string): string {
-  const [w, h] = size.split("x").map(Number);
-  if (!w || !h) return QWEN_SUPPORTED_SIZES[0];
-
-  const targetRatio = w / h;
-  let bestSize = QWEN_SUPPORTED_SIZES[0];
-  let bestDiff = Infinity;
-
-  for (const s of QWEN_SUPPORTED_SIZES) {
-    const [sw, sh] = s.split("×").map(Number);
-    if (!sw || !sh) continue;
-    const ratio = sw / sh;
-    const diff = Math.abs(ratio - targetRatio);
-    if (diff < bestDiff) {
-      bestDiff = diff;
-      bestSize = s;
-    }
-  }
-
-  return bestSize;
+  return pickClosestSize(size, QWEN_SUPPORTED_SIZES, "×");
 }
 
 /** 从 URL 下载图片并转为 base64 */
