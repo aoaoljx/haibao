@@ -1,6 +1,7 @@
 import { defineConfig, loadEnv } from "vite";
 import { fileURLToPath } from "node:url";
-import { buildViteProxyConfig, resolveConfiguredProviders } from "./providers/apiProxyMap";
+import { buildViteProxyConfig } from "./providers/apiProxyMap";
+import { configuredProvidersPlugin } from "./providers/configuredProvidersPlugin";
 
 /**
  * 模型密钥从 .env 读取，只存在于本进程内。
@@ -9,8 +10,8 @@ import { buildViteProxyConfig, resolveConfiguredProviders } from "./providers/ap
  * **无前缀**变量。无前缀是刻意的：vite 只把 VITE_ 前缀的变量静态替换进客户端包，
  * 所以密钥不会出现在 dist 里，也不会经过浏览器——转发时由下面的 proxy 注入请求头。
  *
- * 前端能拿到的只有 __CONFIGURED_PROVIDERS__，即「哪些模型已配好可用」，
- * 由密钥是否存在自动推导，不含密钥本身。
+ * 前端能拿到的只有「哪些模型已配好可用」这份列表，由密钥是否存在自动推导，
+ * 经 virtual:configured-providers 虚拟模块注入，不含密钥本身。
  */
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
@@ -19,9 +20,7 @@ export default defineConfig(({ mode }) => {
   const apiProxy = buildViteProxyConfig(env);
 
   return {
-    define: {
-      __CONFIGURED_PROVIDERS__: JSON.stringify(resolveConfiguredProviders(env))
-    },
+    plugins: [configuredProvidersPlugin(env)],
     server: {
       host: "127.0.0.1",
       port: 3000,

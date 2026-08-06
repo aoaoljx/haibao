@@ -83,7 +83,7 @@ AI SDK 约 360kB，只在真正调用该模型时才加载，不进首屏包。
 | 数据 | 位置 | 是否进客户端包 |
 | --- | --- | --- |
 | API 密钥（`DASHSCOPE_API_KEY` 等，**无前缀**） | `.env`，由 `loadEnv(mode, cwd, "")` 读取 | **否** |
-| 已配好密钥的 Provider 列表 | 构建时由密钥是否存在推导，`define` 注入 `__CONFIGURED_PROVIDERS__` | 是（只有 ID） |
+| 已配好密钥的 Provider 列表 | 由密钥是否存在推导，经 `virtual:configured-providers` 虚拟模块注入 | 是（只有 ID） |
 | 非机密调节项（`VITE_` 前缀） | `.env`，走 `import.meta.env` | 是 |
 
 浏览器发出的请求不带凭据；`vite.config.ts` 的 proxy `configure` 钩子在转发时
@@ -93,6 +93,10 @@ AI SDK 约 360kB，只在真正调用该模型时才加载，不进首屏包。
 **「.env 里有没有那把 Key」是可用性的唯一真相源**——不需要另外维护启用列表，
 也就不会出现「填了 Key 却没启用」或「启用了却没 Key」的错配。
 界面的模型下拉只列出真正可用的，不会再出现「选得到、点了才报错」。
+
+> 这里刻意没用 `define`：实测它在本项目的 dev server 下不会替换 `providers/`
+> 里的标识符，会造成「构建能用、`npm run dev` 却报没有可用模型」的 dev/prod 割裂。
+> 虚拟模块在 dev 与 build 走同一条路径，行为一致。
 
 ## 约束
 

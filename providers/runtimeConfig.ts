@@ -1,3 +1,5 @@
+// 由 configuredProvidersPlugin 在构建/开发期生成，内容取决于 .env 里配了哪些密钥
+import { configuredProviderIds } from "virtual:configured-providers";
 import { IMAGE_PROVIDER_IDS, isImageProviderId } from "./registry";
 import type { ImageProviderId } from "./types";
 
@@ -14,8 +16,7 @@ import type { ImageProviderId } from "./types";
 
 /** 已在 .env 中配好密钥、可以真正调用的 Provider */
 export function configuredProviders(): ImageProviderId[] {
-  const injected = typeof __CONFIGURED_PROVIDERS__ !== "undefined" ? __CONFIGURED_PROVIDERS__ : [];
-  return injected.filter(isImageProviderId);
+  return configuredProviderIds.filter(isImageProviderId);
 }
 
 /**
