@@ -4,11 +4,13 @@ export const posterAssetSources = {
   logo: "/poster-assets/logo.png",
   logoAi: "/poster-assets/logo-ai.png",
   productBadge: "/poster-assets/product-badge.png",
-  graphic1: "/poster-assets/poster-graphic-1-clean-v3.png",
-  graphic2: "/poster-assets/poster-graphic-2-clean-v3.png",
-  graphic3: "/poster-assets/poster-graphic-3-clean-v3.png",
-  graphic4: "/poster-assets/poster-graphic-4-clean-v3.png",
-  graphic5: "/poster-assets/poster-graphic-5-clean-v3.png"
+  aiProductBadge: "/poster-assets/ai-product-badge.png",
+  graphic1: "/poster-assets/gallery-graphic-1.png",
+  graphic2: "/poster-assets/gallery-graphic-2.png",
+  graphic3: "/poster-assets/gallery-graphic-3.png",
+  graphic4: "/poster-assets/gallery-graphic-4.png",
+  graphic5: "/poster-assets/gallery-graphic-5.png",
+  graphic6: "/poster-assets/gallery-graphic-6.png"
 } as const;
 
 export type PosterAssetName = keyof typeof posterAssetSources;

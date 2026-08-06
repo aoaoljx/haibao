@@ -15,8 +15,7 @@ export function buildVisualGenerationPlan(input: VisualGenerationInput): VisualG
     titleBlue: input.titleBlue,
     titleDark: input.titleDark,
     featurePoints: input.featurePoints,
-    keywords: [input.keywords, ...extractedKeywords].filter(Boolean).join(" "),
-    graphicText: input.graphicText
+    keywords: [input.keywords, ...extractedKeywords].filter(Boolean).join(" ")
   });
 
   return {
@@ -28,6 +27,8 @@ export function buildVisualGenerationPlan(input: VisualGenerationInput): VisualG
       matchedCategories: builtPrompt.matchedCategories,
       sceneKey: builtPrompt.sceneKey,
       sceneName: builtPrompt.sceneName,
+      styleKey: builtPrompt.styleKey,
+      styleName: builtPrompt.styleName,
       visualElements: builtPrompt.visualElements
     }
   };
@@ -47,6 +48,8 @@ export async function generateVisualImage(
       metadata: {
         sceneKey: plan.trace.sceneKey,
         sceneName: plan.trace.sceneName,
+        styleKey: plan.trace.styleKey,
+        styleName: plan.trace.styleName,
         matchedCategories: plan.trace.matchedCategories
       }
     },

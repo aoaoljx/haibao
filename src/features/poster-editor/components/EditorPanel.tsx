@@ -1,8 +1,4 @@
-import type {
-  GraphicOverlayText,
-  GraphicSource,
-  PosterEditorState
-} from "../hooks/usePosterEditor";
+import type { GraphicSource, PosterEditorState } from "../hooks/usePosterEditor";
 import {
   getManualApiConfigFields,
   listImageProviderDefinitions,
@@ -29,7 +25,6 @@ interface EditorPanelProps {
     field: keyof ImageProviderConfig | `extra.${string}`,
     value: string
   ) => void;
-  onGraphicOverlayTextChange: (field: keyof GraphicOverlayText, value: string) => void;
   onGenerateVisual: () => void;
 }
 
@@ -104,7 +99,6 @@ export function EditorPanel({
   onKeywordsChange,
   onProviderChange,
   onProviderConfigFieldChange,
-  onGraphicOverlayTextChange,
   onGenerateVisual
 }: EditorPanelProps) {
   const providerFields = getManualApiConfigFields(state.providerConfig.provider);
@@ -270,37 +264,6 @@ export function EditorPanel({
         ) : null}
       </div>
 
-      <div className="panel-section">
-        <h2>图形文字</h2>
-        <label>
-          顶部文字
-          <input
-            value={state.graphicOverlayText.topText}
-            onChange={(event) => onGraphicOverlayTextChange("topText", event.target.value)}
-          />
-        </label>
-        <label>
-          标签
-          <input
-            value={state.graphicOverlayText.label}
-            onChange={(event) => onGraphicOverlayTextChange("label", event.target.value)}
-          />
-        </label>
-        <label>
-          按钮文字
-          <input
-            value={state.graphicOverlayText.buttonText}
-            onChange={(event) => onGraphicOverlayTextChange("buttonText", event.target.value)}
-          />
-        </label>
-        <label>
-          徽章文字
-          <input
-            value={state.graphicOverlayText.badgeText}
-            onChange={(event) => onGraphicOverlayTextChange("badgeText", event.target.value)}
-          />
-        </label>
-      </div>
     </aside>
   );
 }

@@ -1,10 +1,8 @@
-import { visualMapping } from "./visualMapping";
 import type {
   PosterCopy,
   PosterMode,
   VisualKey,
-  VisualSelection,
-  VisualTextValueMap
+  VisualSelection
 } from "./types";
 
 export interface PosterPreset {
@@ -29,17 +27,14 @@ export const posterPresets: Record<PosterMode, PosterPreset> = {
     }
   },
   ai: {
-    selection: "graphic5",
+    selection: "graphic6",
     copy: {
       titleBlue: "AI辅助",
       titleDark: "生成测试用例",
       subtitle: "邀您抢先体验",
       notice: "让您专注于业务创造，而非重复工作",
       tag: "beta版",
-      featurePoints: [
-        "测试用例生成：根据需求自动生成核心测试场景",
-        "智能补全：覆盖边界条件，减少重复编写"
-      ]
+      featurePoints: []
     }
   }
 };
@@ -49,24 +44,4 @@ export function clonePosterCopy(copy: PosterCopy): PosterCopy {
     ...copy,
     featurePoints: [...copy.featurePoints]
   };
-}
-
-export function createDefaultGraphicTextState(): Record<VisualKey, VisualTextValueMap> {
-  return Object.fromEntries(
-    visualMapping.visuals.map((visual) => [
-      visual.key,
-      Object.fromEntries(
-        visual.editableTextFields.map((field) => [field.id, field.defaultValue])
-      )
-    ])
-  ) as Record<VisualKey, VisualTextValueMap>;
-}
-
-export function createTouchedGraphicTextState(): Record<VisualKey, Record<string, boolean>> {
-  return Object.fromEntries(
-    visualMapping.visuals.map((visual) => [
-      visual.key,
-      Object.fromEntries(visual.editableTextFields.map((field) => [field.id, false]))
-    ])
-  ) as Record<VisualKey, Record<string, boolean>>;
 }

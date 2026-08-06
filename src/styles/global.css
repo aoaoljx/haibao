@@ -314,22 +314,6 @@ textarea {
   white-space: nowrap;
 }
 
-.graphic-text-editor {
-  margin-top: 14px;
-  padding-top: 14px;
-  border-top: 1px dashed var(--line);
-}
-
-.graphic-text-editor h3 {
-  margin: 0 0 10px;
-  font-size: 14px;
-  color: var(--ink);
-}
-
-.graphic-text-editor:empty {
-  display: none;
-}
-
 .provider-panel {
   margin-top: 14px;
   padding-top: 14px;

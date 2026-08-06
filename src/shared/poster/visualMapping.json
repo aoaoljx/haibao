@@ -1,8 +1,8 @@
 {
-  "schemaVersion": "1.0.0",
+  "schemaVersion": "2.0.0",
   "positioning": {
     "name": "效能平台功能发布海报模版",
-    "aiScope": "AI只负责生成或匹配右侧2.5D品牌主视觉；左侧文案由运营手动编辑；当前版本不接任何AI接口。"
+    "aiScope": "AI根据海报模式生成透明背景右侧3D主视觉；正常功能发布使用前五张图库素材提取的蓝白玻璃拟态风格，AI功能发布使用第六张素材提取的深蓝青光玻璃风格。"
   },
   "canvas": {
     "width": 3840,
@@ -10,319 +10,84 @@
   },
   "fallback": {
     "feature": "graphic1",
-    "ai": "graphic5"
+    "ai": "graphic6"
   },
   "matchPriority": {
-    "feature": ["graphic3", "graphic4", "graphic5", "graphic2", "graphic1"],
-    "ai": ["graphic4", "graphic2", "graphic3", "graphic5"]
+    "feature": ["graphic1", "graphic2", "graphic3", "graphic4", "graphic5", "graphic6"],
+    "ai": ["graphic6", "graphic3", "graphic1", "graphic5", "graphic4", "graphic2"]
   },
   "visuals": [
     {
       "key": "graphic1",
-      "name": "图形一",
-      "assetPath": "/poster-assets/poster-graphic-1-clean-v3.png",
-      "sourceAssetPath": "/poster-assets/poster-graphic-1.png",
-      "description": "蓝色2.5D代码提交与工作流卡片主视觉，适合代码编辑、评审、提交、审核类功能。",
+      "name": "代码提交",
+      "assetPath": "/poster-assets/gallery-graphic-1.png",
+      "description": "蓝白叠层代码文档面板，带抽象函数代码、提交按钮与立体光标。",
       "preferredModes": ["feature"],
-      "naturalSize": {
-        "width": 1530,
-        "height": 1232
-      },
-      "posterBounds": {
-        "x": 2050,
-        "y": 505,
-        "w": 1650,
-        "h": 1329
-      },
-      "keywords": ["代码", "编辑", "评审", "审核", "提交", "合并", "工作流", "devflow"],
-      "promptHints": ["代码编辑器", "流程卡片", "蓝白科技感", "悬浮面板", "右侧品牌主视觉"],
-      "editableTextFields": [
-        {
-          "id": "brand",
-          "label": "顶部标题",
-          "role": "brand",
-          "defaultValue": "iDevflow",
-          "maxLength": 12
-        },
-        {
-          "id": "action",
-          "label": "按钮文字",
-          "role": "action",
-          "defaultValue": "提交",
-          "maxLength": 4
-        }
-      ],
-      "renderSlots": [
-        {
-          "fieldId": "brand",
-          "x": 390,
-          "y": 242,
-          "anchor": "baseline",
-          "fontSize": 92,
-          "maxWidth": 555,
-          "align": "left",
-          "styleToken": "embossedWhiteItalic"
-        },
-        {
-          "fieldId": "action",
-          "x": 407,
-          "y": 826,
-          "anchor": "baseline",
-          "fontSize": 54,
-          "maxWidth": 190,
-          "align": "center",
-          "styleToken": "embossedWhite"
-        }
-      ]
+      "naturalSize": { "width": 1530, "height": 1232 },
+      "visibleBounds": { "x": 115, "y": 96, "w": 1286, "h": 1073 },
+      "posterBounds": { "x": 2050, "y": 505, "w": 1650, "h": 1329 },
+      "keywords": ["代码", "编辑", "提交", "函数", "开发", "合并", "工作流"],
+      "promptHints": ["叠层代码文档", "抽象代码短线", "立体光标", "提交按钮", "蓝色发光底座"]
     },
     {
       "key": "graphic2",
-      "name": "图形二",
-      "assetPath": "/poster-assets/poster-graphic-2-clean-v3.png",
-      "sourceAssetPath": "/poster-assets/poster-graphic-2.png",
-      "description": "蓝色2.5D登录与账号认证主视觉，适合登录、权限、账号、安全认证类功能。",
-      "preferredModes": ["feature", "ai"],
-      "naturalSize": {
-        "width": 1560,
-        "height": 1264
-      },
-      "posterBounds": {
-        "x": 2050,
-        "y": 505,
-        "w": 1640,
-        "h": 1329
-      },
-      "keywords": ["登录", "单点", "sso", "认证", "账号", "权限", "安全", "鉴权"],
-      "promptHints": ["登录表单", "账号安全", "蓝白玻璃面板", "2.5D终端", "右侧品牌主视觉"],
-      "editableTextFields": [
-        {
-          "id": "brand",
-          "label": "顶部标题",
-          "role": "brand",
-          "defaultValue": "iDevflow",
-          "maxLength": 12
-        },
-        {
-          "id": "action",
-          "label": "按钮文字",
-          "role": "action",
-          "defaultValue": "登录",
-          "maxLength": 4
-        }
-      ],
-      "renderSlots": [
-        {
-          "fieldId": "brand",
-          "x": 420,
-          "y": 246,
-          "anchor": "baseline",
-          "fontSize": 94,
-          "maxWidth": 570,
-          "align": "left",
-          "styleToken": "embossedWhiteItalic"
-        },
-        {
-          "fieldId": "action",
-          "x": 428,
-          "y": 832,
-          "anchor": "baseline",
-          "fontSize": 54,
-          "maxWidth": 195,
-          "align": "center",
-          "styleToken": "embossedWhite"
-        }
-      ]
+      "name": "登录认证",
+      "assetPath": "/poster-assets/gallery-graphic-2.png",
+      "description": "蓝白叠层文档式登录认证面板，带金色钥匙、登录按钮和玻璃折页。",
+      "preferredModes": ["feature"],
+      "naturalSize": { "width": 1560, "height": 1264 },
+      "visibleBounds": { "x": 88, "y": 94, "w": 1372, "h": 1095 },
+      "posterBounds": { "x": 2050, "y": 505, "w": 1640, "h": 1329 },
+      "keywords": ["登录", "认证", "账号", "密码", "权限", "安全", "单点登录"],
+      "promptHints": ["叠层登录文档", "金色钥匙", "玻璃折页", "蓝白渐变", "柔和地面光晕"]
     },
     {
       "key": "graphic3",
-      "name": "图形三",
-      "assetPath": "/poster-assets/poster-graphic-3-clean-v3.png",
-      "sourceAssetPath": "/poster-assets/poster-graphic-3.png",
-      "description": "蓝色2.5D路标、交付与发布验证主视觉，适合需求、版本、交付、发布验证类功能。",
-      "preferredModes": ["feature", "ai"],
-      "naturalSize": {
-        "width": 2344,
-        "height": 1538
-      },
-      "posterBounds": {
-        "x": 1874,
-        "y": 636,
-        "w": 2344,
-        "h": 1538
-      },
-      "keywords": ["交付", "验证", "路标", "版本", "需求", "发布", "上线", "迭代"],
-      "promptHints": ["路标卡片", "发布按钮", "验证状态", "多层级流程", "蓝色2.5D业务看板"],
-      "editableTextFields": [
-        {
-          "id": "milestone",
-          "label": "左侧卡片",
-          "role": "card",
-          "defaultValue": "路标版本",
-          "maxLength": 8
-        },
-        {
-          "id": "delivery",
-          "label": "右侧卡片",
-          "role": "card",
-          "defaultValue": "敏捷交付",
-          "maxLength": 8
-        },
-        {
-          "id": "publish",
-          "label": "按钮文字",
-          "role": "action",
-          "defaultValue": "点击发布",
-          "maxLength": 6
-        },
-        {
-          "id": "status",
-          "label": "状态标签",
-          "role": "status",
-          "defaultValue": "验证中",
-          "maxLength": 4
-        }
-      ],
-      "renderSlots": [
-        {
-          "fieldId": "milestone",
-          "x": 718,
-          "y": 477,
-          "anchor": "center",
-          "fontSize": 86,
-          "maxWidth": 250,
-          "align": "center",
-          "styleToken": "stackedWhite"
-        },
-        {
-          "fieldId": "delivery",
-          "x": 1265,
-          "y": 563,
-          "anchor": "center",
-          "fontSize": 82,
-          "maxWidth": 250,
-          "align": "center",
-          "styleToken": "stackedLightBlue"
-        },
-        {
-          "fieldId": "publish",
-          "x": 1100,
-          "y": 861,
-          "anchor": "baseline",
-          "fontSize": 46,
-          "maxWidth": 225,
-          "align": "center",
-          "styleToken": "plainWhite"
-        },
-        {
-          "fieldId": "status",
-          "x": 1554,
-          "y": 263,
-          "anchor": "baseline",
-          "fontSize": 48,
-          "maxWidth": 155,
-          "align": "center",
-          "styleToken": "plainBlue"
-        }
-      ]
+      "name": "版本发布",
+      "assetPath": "/poster-assets/gallery-graphic-3.png",
+      "description": "蓝白磨砂玻璃的版本发布窗口，包含路标版本、敏捷交付、验证状态与发布按钮。",
+      "preferredModes": ["feature"],
+      "naturalSize": { "width": 2344, "height": 1538 },
+      "visibleBounds": { "x": 140, "y": 128, "w": 2077, "h": 1256 },
+      "posterBounds": { "x": 1874, "y": 382, "w": 1950, "h": 1280 },
+      "keywords": ["发布", "版本", "路标", "敏捷交付", "验证", "上线", "迭代"],
+      "promptHints": ["发布窗口", "双卡片", "验证浮层", "青色按钮", "蓝色环绕飘带"]
     },
     {
       "key": "graphic4",
-      "name": "图形四",
-      "assetPath": "/poster-assets/poster-graphic-4-clean-v3.png",
-      "sourceAssetPath": "/poster-assets/poster-graphic-4.png",
-      "description": "AI搜索、代码助手与智能检查主视觉，适合代码助手、搜索、检查、修复和智能编码类功能。",
-      "preferredModes": ["feature", "ai"],
-      "naturalSize": {
-        "width": 1818,
-        "height": 1396
-      },
-      "posterBounds": {
-        "x": 2262,
-        "y": 384,
-        "w": 1818,
-        "h": 1396
-      },
-      "keywords": ["搜索", "检查", "修复", "coder", "代码助手", "编码", "AI", "智能编码"],
-      "promptHints": ["AI标识", "代码搜索框", "智能检查", "蓝色光效", "2.5D技术助手"],
-      "editableTextFields": [
-        {
-          "id": "ai",
-          "label": "AI 标识",
-          "role": "badge",
-          "defaultValue": "AI",
-          "maxLength": 4
-        },
-        {
-          "id": "coder",
-          "label": "搜索框标题",
-          "role": "title",
-          "defaultValue": "DF Coder",
-          "maxLength": 10
-        }
-      ],
-      "renderSlots": [
-        {
-          "fieldId": "ai",
-          "x": 477,
-          "y": 159,
-          "anchor": "baseline",
-          "fontSize": 62,
-          "maxWidth": 170,
-          "align": "center",
-          "styleToken": "plainBlueItalic"
-        },
-        {
-          "fieldId": "coder",
-          "x": 727,
-          "y": 164,
-          "anchor": "baseline",
-          "fontSize": 60,
-          "maxWidth": 405,
-          "align": "left",
-          "styleToken": "plainBlue"
-        }
-      ]
+      "name": "DF Coder 助手",
+      "assetPath": "/poster-assets/gallery-graphic-4.png",
+      "description": "蓝白玻璃拟态的DF Coder代码助手终端，带检查清单、代码图标与智能耳机主视觉。",
+      "preferredModes": ["feature"],
+      "naturalSize": { "width": 1818, "height": 1396 },
+      "visibleBounds": { "x": 194, "y": 35, "w": 1365, "h": 1361 },
+      "posterBounds": { "x": 2262, "y": 384, "w": 1818, "h": 1396 },
+      "keywords": ["coder", "代码助手", "编码", "检查", "修复", "研发", "智能编程"],
+      "promptHints": ["蓝白玻璃终端", "检查清单", "代码助手", "薄荷绿状态点", "电光蓝底部光晕"]
     },
     {
       "key": "graphic5",
-      "name": "图形五",
-      "assetPath": "/poster-assets/poster-graphic-5-clean-v3.png",
-      "sourceAssetPath": "/poster-assets/poster-graphic-5.png",
-      "description": "AI生成与测试用例主视觉，适合智能生成、测试用例、文档分析、问答总结类AI功能。",
+      "name": "AI 测试用例",
+      "assetPath": "/poster-assets/gallery-graphic-5.png",
+      "description": "浅蓝玻璃AI测试用例应用图标，带代码徽章、机器人辅助卡、星光和光标。",
+      "preferredModes": ["feature"],
+      "naturalSize": { "width": 2077, "height": 1338 },
+      "visibleBounds": { "x": 183, "y": 53, "w": 1766, "h": 1177 },
+      "posterBounds": { "x": 2080, "y": 416, "w": 2077, "h": 1338 },
+      "keywords": ["ai", "测试", "用例", "智能生成", "质量", "代码", "自动化"],
+      "promptHints": ["AI应用卡片", "代码徽章", "机器人辅助卡", "金色星光", "蓝色发光底座"]
+    },
+    {
+      "key": "graphic6",
+      "name": "AI 智能生成",
+      "assetPath": "/poster-assets/gallery-graphic-6.png",
+      "description": "深蓝青光玻璃AI应用图标，带代码徽章、点阵数字界面、辅助卡片与蓝紫品牌胶囊。",
       "preferredModes": ["ai"],
-      "naturalSize": {
-        "width": 2077,
-        "height": 1338
-      },
-      "posterBounds": {
-        "x": 2080,
-        "y": 416,
-        "w": 2077,
-        "h": 1338
-      },
-      "keywords": ["ai", "智能", "测试", "用例", "文档", "分析", "生成", "助手", "问答", "总结"],
-      "promptHints": ["AI生成卡片", "测试用例标签", "智能分析面板", "蓝紫渐变光效", "2.5D品牌主视觉"],
-      "editableTextFields": [
-        {
-          "id": "title",
-          "label": "底部标签",
-          "role": "title",
-          "defaultValue": "测试用例",
-          "maxLength": 8
-        }
-      ],
-      "renderSlots": [
-        {
-          "fieldId": "title",
-          "x": 328,
-          "y": 1058,
-          "anchor": "baseline",
-          "fontSize": 72,
-          "maxWidth": 420,
-          "align": "center",
-          "styleToken": "embossedWhite"
-        }
-      ]
+      "naturalSize": { "width": 1703, "height": 1308 },
+      "visibleBounds": { "x": 93, "y": 54, "w": 1526, "h": 1169 },
+      "posterBounds": { "x": 2140, "y": 534, "w": 1703, "h": 1308 },
+      "keywords": ["ai", "智能", "生成", "测试", "用例", "代码", "助手", "大模型"],
+      "promptHints": ["深蓝玻璃AI应用图标", "青色发光边缘", "代码徽章", "点阵数字界面", "蓝紫玻璃胶囊"]
     }
   ]
 }

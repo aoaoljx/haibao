@@ -5,13 +5,10 @@ export type VisualKey =
   | "graphic2"
   | "graphic3"
   | "graphic4"
-  | "graphic5";
+  | "graphic5"
+  | "graphic6";
 
 export type VisualSelection = VisualKey | "auto";
-
-export type TextAlign = "left" | "center" | "right";
-
-export type TextAnchor = "baseline" | "center";
 
 export interface PosterCopy {
   titleBlue: string;
@@ -29,25 +26,6 @@ export interface VisualBounds {
   h: number;
 }
 
-export interface VisualTextField {
-  id: string;
-  label: string;
-  role: "brand" | "action" | "card" | "status" | "badge" | "title";
-  defaultValue: string;
-  maxLength?: number;
-}
-
-export interface VisualTextRenderSlot {
-  fieldId: string;
-  x: number;
-  y: number;
-  anchor: TextAnchor;
-  fontSize: number;
-  maxWidth: number;
-  align: TextAlign;
-  styleToken: string;
-}
-
 export interface VisualAsset {
   key: VisualKey;
   name: string;
@@ -59,11 +37,10 @@ export interface VisualAsset {
     width: number;
     height: number;
   };
+  visibleBounds?: VisualBounds;
   posterBounds: VisualBounds;
   keywords: string[];
   promptHints: string[];
-  editableTextFields: VisualTextField[];
-  renderSlots: VisualTextRenderSlot[];
 }
 
 export interface VisualMapping {
@@ -80,5 +57,3 @@ export interface VisualMapping {
   matchPriority: Record<PosterMode, VisualKey[]>;
   visuals: VisualAsset[];
 }
-
-export type VisualTextValueMap = Record<string, string>;
