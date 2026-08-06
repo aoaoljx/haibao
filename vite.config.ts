@@ -1,46 +1,24 @@
 import { defineConfig } from "vite";
 import { fileURLToPath } from "node:url";
+import { buildViteProxyConfig } from "./providers/apiProxyMap";
+
+/**
+ * dev 与 preview 共用同一份转发规则。
+ * 前端 `proxyUrl()` 改写出的路径、这里的转发规则、以及生产环境 Nginx 的 location
+ * 三者必须一致，否则模型调用会静默 404。三处都以 providers/apiProxyMap.ts 为准。
+ */
+const apiProxy = buildViteProxyConfig();
 
 export default defineConfig({
   server: {
     host: "127.0.0.1",
     port: 3000,
-    proxy: {
-      // 千问百炼 DashScope API — 完整路径代理，无需 rewrite
-      "/api/dashscope": {
-        target: "https://dashscope.aliyuncs.com/api/v1",
-        changeOrigin: true,
-        secure: false
-      },
-      // OpenAI API
-      "/api/openai": {
-        target: "https://api.openai.com/v1",
-        changeOrigin: true,
-        secure: false
-      },
-      // Google Gemini API
-      "/api/gemini": {
-        target: "https://generativelanguage.googleapis.com",
-        changeOrigin: true,
-        secure: false
-      },
-      // Flux / Black Forest Labs
-      "/api/flux": {
-        target: "https://api.bfl.ml",
-        changeOrigin: true,
-        secure: false
-      },
-      // Ideogram
-      "/api/ideogram": {
-        target: "https://api.ideogram.ai",
-        changeOrigin: true,
-        secure: false
-      }
-    }
+    proxy: apiProxy
   },
   preview: {
     host: "127.0.0.1",
-    port: 4173
+    port: 4173,
+    proxy: apiProxy
   },
   resolve: {
     alias: {
