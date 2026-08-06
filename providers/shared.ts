@@ -1,6 +1,8 @@
+import { toProxyPath } from "./apiProxyMap";
 import type {
   GenerateImageInput,
   GenerateImageResult,
+  ImageMimeType,
   ImageProviderAdapter,
   ImageProviderConfig,
   ImageProviderDefinition
@@ -10,43 +12,20 @@ export const DEFAULT_IMAGE_SIZE = "1536x1536";
 export const DEFAULT_PROVIDER_TIMEOUT_MS = 120000;
 
 /**
- * API 代理映射表：将外部 API 的完整 base URL 映射为 Vite 代理路径前缀
- * 开发环境下通过 Vite proxy 转发请求，避免浏览器 CORS 限制
- */
-const PROXY_MAP: Array<{ host: string; proxyPrefix: string }> = [
-  { host: "dashscope.aliyuncs.com", proxyPrefix: "/api/dashscope" },
-  { host: "api.openai.com", proxyPrefix: "/api/openai" },
-  { host: "generativelanguage.googleapis.com", proxyPrefix: "/api/gemini" },
-  { host: "api.bfl.ml", proxyPrefix: "/api/flux" },
-  { host: "api.ideogram.ai", proxyPrefix: "/api/ideogram" }
-];
-
-/**
- * 将外部 API 的完整 URL 转换为 Vite 代理路径
+ * 将外部 API 的完整 URL 改写为同源代理路径，绕开浏览器 CORS 限制。
  *
- * 例如：
+ * 代理前缀只替代 origin，pathname 原样保留：
  *   https://dashscope.aliyuncs.com/api/v1/services/aigc/text2image/image-synthesis
- *   → /api/dashscope/services/aigc/text2image/image-synthesis
+ *   → /api/dashscope/api/v1/services/aigc/text2image/image-synthesis
  *
- * Vite 代理会将 /api/dashscope 转发到 https://dashscope.aliyuncs.com/api/v1
+ * 转发层（vite server/preview 的 proxy、生产环境的 Nginx）负责剥掉 `/api/dashscope`
+ * 前缀后转发到 https://dashscope.aliyuncs.com，还原出完全一致的路径。
+ * 映射表见 ./apiProxyMap.ts —— 那是唯一真相源。
  */
 export function proxyUrl(fullUrl: string): string {
-  // 非浏览器环境直接返回
+  // 非浏览器环境没有同源代理可用，直连
   if (typeof window === "undefined") return fullUrl;
-
-  try {
-    const url = new URL(fullUrl);
-    for (const { host, proxyPrefix } of PROXY_MAP) {
-      if (url.hostname === host) {
-        // 移除 hostname 和协议，保留路径部分，拼接到代理前缀后
-        return `${proxyPrefix}${url.pathname}${url.search}`;
-      }
-    }
-  } catch {
-    // URL 解析失败，回退到直连
-  }
-
-  return fullUrl;
+  return toProxyPath(fullUrl) ?? fullUrl;
 }
 
 export function normalizeImageInput(input: GenerateImageInput): Required<
@@ -67,6 +46,46 @@ export function normalizeImageInput(input: GenerateImageInput): Required<
   };
 }
 
+/**
+ * 从模型支持的固定尺寸里挑比例最接近请求值的那个。
+ *
+ * 各家文生图都只接受有限的几种尺寸，和海报槽位的比例不可能次次对上。
+ * 这里只负责挑最接近的，残余误差由渲染层的 fitContain 吸收成透明留白，
+ * 绝不拉伸。
+ *
+ * @param separator 尺寸字符串里的分隔符。千问用全角 ×，OpenAI 用小写 x。
+ */
+export function pickClosestSize(
+  requestedSize: string,
+  supportedSizes: readonly string[],
+  separator = "x"
+): string {
+  const fallback = supportedSizes[0];
+  const requested = parseRatio(requestedSize, "x");
+  if (!requested) return fallback;
+
+  let best = fallback;
+  let bestDiff = Infinity;
+
+  for (const candidate of supportedSizes) {
+    const ratio = parseRatio(candidate, separator);
+    if (!ratio) continue;
+
+    const diff = Math.abs(ratio - requested);
+    if (diff < bestDiff) {
+      bestDiff = diff;
+      best = candidate;
+    }
+  }
+
+  return best;
+}
+
+function parseRatio(size: string, separator: string): number | null {
+  const [w, h] = size.split(separator).map(Number);
+  return w > 0 && h > 0 ? w / h : null;
+}
+
 export function normalizeProviderConfig(config: ImageProviderConfig): ImageProviderConfig {
   return {
     ...config,
@@ -74,9 +93,12 @@ export function normalizeProviderConfig(config: ImageProviderConfig): ImageProvi
   };
 }
 
-export function createPngResult(params: {
+export function createImageResult(params: {
   provider: GenerateImageResult["provider"];
   base64: string;
+  mimeType: ImageMimeType;
+  /** 本次调用是否真的拿到了透明底。默认 false —— 宁可多去一次背，也不要漏 */
+  transparentBackground?: boolean;
   model?: string;
   width?: number;
   height?: number;
@@ -84,14 +106,28 @@ export function createPngResult(params: {
 }): GenerateImageResult {
   return {
     provider: params.provider,
-    mimeType: "image/png",
+    transparentBackground: params.transparentBackground ?? false,
+    mimeType: params.mimeType,
     base64: params.base64,
-    dataUrl: `data:image/png;base64,${params.base64}`,
+    dataUrl: `data:${params.mimeType};base64,${params.base64}`,
     model: params.model,
     width: params.width,
     height: params.height,
     raw: params.raw
   };
+}
+
+/** 已确定是 PNG 时的简写 */
+export function createPngResult(
+  params: Omit<Parameters<typeof createImageResult>[0], "mimeType">
+): GenerateImageResult {
+  return createImageResult({ ...params, mimeType: "image/png" });
+}
+
+/** 把 SDK 返回的媒体类型收敛到我们支持的集合，认不出就按 PNG 处理 */
+export function normalizeMimeType(mediaType: string | undefined): ImageMimeType {
+  if (mediaType === "image/webp" || mediaType === "image/jpeg") return mediaType;
+  return "image/png";
 }
 
 export function createDeferredImageProvider(definition: ImageProviderDefinition): ImageProviderAdapter {

@@ -1,16 +1,13 @@
-import type {
-  GraphicOverlayText,
-  GraphicSource,
-  PosterEditorState
-} from "../hooks/usePosterEditor";
+import type { PosterEditorState } from "../hooks/usePosterEditor";
+import { graphicTextValue } from "@/shared/poster/graphicText";
+import { getVisualByKey } from "@/shared/poster/visualMapping";
 import {
-  getManualApiConfigFields,
-  listImageProviderDefinitions,
-  type ImageProviderConfig,
-  type ImageProviderId,
-  type ProviderConfigField
+  configuredProviders,
+  getImageProviderDefinition,
+  providersAwaitingAdapter,
+  type ImageProviderId
 } from "@providers";
-import type { PosterCopy, VisualAsset, VisualKey } from "@/shared/poster/types";
+import type { GraphicSource, PosterCopy, VisualAsset, VisualKey } from "@/shared/poster/types";
 import { FeaturePointList } from "./FeaturePointList";
 
 interface EditorPanelProps {
@@ -25,11 +22,8 @@ interface EditorPanelProps {
   onUploadedFileChange: (file: File | null) => void;
   onKeywordsChange: (value: string) => void;
   onProviderChange: (provider: ImageProviderId) => void;
-  onProviderConfigFieldChange: (
-    field: keyof ImageProviderConfig | `extra.${string}`,
-    value: string
-  ) => void;
-  onGraphicOverlayTextChange: (field: keyof GraphicOverlayText, value: string) => void;
+  onGraphicTextFieldChange: (fieldId: string, value: string) => void;
+  onRemoveBackgroundChange: (value: boolean) => void;
   onGenerateVisual: () => void;
 }
 
@@ -39,57 +33,18 @@ const graphicSourceOptions: Array<{ label: string; value: GraphicSource }> = [
   { label: "上传图片", value: "upload" }
 ];
 
-const providerOptions = listImageProviderDefinitions();
-
 /**
- * ProviderConfigInput 必须定义在组件外部，
- * 否则每次父组件渲染都会重新创建该组件，导致输入框失焦。
+ * 只列出 .env 里真正配了密钥的模型。
+ *
+ * 这样不会再出现「下拉里选得到、点了才报错」——能选中的一定是能用的。
+ * 在模块级求值：构建时注入的常量，运行期不会变。
  */
-interface ProviderConfigInputProps {
-  config: ImageProviderConfig;
-  field: ProviderConfigField;
-  onChange: (field: keyof ImageProviderConfig | `extra.${string}`, value: string) => void;
-}
+const readyProviders = configuredProviders().map(getImageProviderDefinition);
 
-function ProviderConfigInput({ config, field, onChange }: ProviderConfigInputProps) {
-  const value = getProviderConfigValue(config, field.key);
-  const commonProps = {
-    value,
-    placeholder: field.placeholder || "",
-    required: field.required,
-    onChange: (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
-      onChange(field.key, event.target.value)
-  };
-
-  return (
-    <label>
-      {field.label}
-      {field.type === "textarea" ? (
-        <textarea {...commonProps} />
-      ) : (
-        <input type={toInputType(field.type)} {...commonProps} />
-      )}
-      {field.description ? <span className="field-hint">{field.description}</span> : null}
-    </label>
-  );
-}
-
-function getProviderConfigValue(
-  config: ImageProviderConfig,
-  field: keyof ImageProviderConfig | `extra.${string}`
-) {
-  if (field.startsWith("extra.")) {
-    return String(config.extra?.[field.slice("extra.".length)] || "");
-  }
-
-  const value = config[field as keyof ImageProviderConfig];
-  return value === undefined || value === null ? "" : String(value);
-}
-
-function toInputType(type: ProviderConfigField["type"]) {
-  if (type === "password" || type === "url" || type === "number") return type;
-  return "text";
-}
+/** 配了密钥但适配器还没接的，单独提示，免得运营以为自己配错了 */
+const pendingProviders = providersAwaitingAdapter().map(
+  (id) => getImageProviderDefinition(id).displayName
+);
 
 export function EditorPanel({
   state,
@@ -103,11 +58,13 @@ export function EditorPanel({
   onUploadedFileChange,
   onKeywordsChange,
   onProviderChange,
-  onProviderConfigFieldChange,
-  onGraphicOverlayTextChange,
+  onGraphicTextFieldChange,
+  onRemoveBackgroundChange,
   onGenerateVisual
 }: EditorPanelProps) {
-  const providerFields = getManualApiConfigFields(state.providerConfig.provider);
+  const providerDefinition = getImageProviderDefinition(state.providerConfig.provider);
+  const activeVisual = getVisualByKey(state.visualKey);
+  const activeValues = state.graphicText[state.visualKey];
 
   return (
     <aside className="panel">
@@ -185,9 +142,16 @@ export function EditorPanel({
                   type="button"
                   key={visual.key}
                   onClick={() => onLibraryVisualChange(visual.key)}
+                  title={visual.description}
                 >
                   <img src={visual.assetPath} alt="" />
-                  <span>{visual.name}</span>
+                  <span>
+                    {visual.name}
+                    {/* 推荐只是提示，不限制选择 */}
+                    {visual.preferredModes.includes(state.mode) ? (
+                      <em className="gallery-tag">推荐</em>
+                    ) : null}
+                  </span>
                 </button>
               ))}
             </div>
@@ -218,28 +182,55 @@ export function EditorPanel({
               />
             </label>
             <div className="provider-panel">
-              <h3>模型接口配置</h3>
-              <label>
-                图片模型
-                <select
-                  value={state.providerConfig.provider}
-                  onChange={(event) => onProviderChange(event.target.value as ImageProviderId)}
-                >
-                  {providerOptions.map((provider) => (
-                    <option value={provider.id} key={provider.id}>
-                      {provider.displayName}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              {providerFields.map((field) => (
-                <ProviderConfigInput
-                  config={state.providerConfig}
-                  field={field}
-                  key={field.key}
-                  onChange={onProviderConfigFieldChange}
-                />
-              ))}
+              <h3>图片模型</h3>
+              {readyProviders.length ? (
+                <>
+                  <label>
+                    使用模型
+                    <select
+                      value={state.providerConfig.provider}
+                      onChange={(event) => onProviderChange(event.target.value as ImageProviderId)}
+                    >
+                      {readyProviders.map((provider) => (
+                        <option value={provider.id} key={provider.id}>
+                          {provider.displayName}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <p className="field-hint">
+                    密钥由服务端从 .env 读取，不经过浏览器，因此这里无需填写。
+                    要新增或更换模型，编辑项目根目录的 .env 后重启服务。
+                  </p>
+                </>
+              ) : (
+                <p className="field-hint field-hint-warn">
+                  还没有可用的图片模型。请复制 .env.example 为 .env，
+                  填入 DASHSCOPE_API_KEY 或 OPENAI_API_KEY，然后重启服务。
+                </p>
+              )}
+              {pendingProviders.length ? (
+                <p className="field-hint field-hint-warn">
+                  已在 .env 里配置但<strong>尚未支持</strong>：{pendingProviders.join("、")}。
+                  这几个 Provider 只在注册表里占位，适配器还没接，所以不会出现在上面的列表里。
+                </p>
+              ) : null}
+              {providerDefinition.supportsTransparentBackground ? null : (
+                <label className="checkbox-option">
+                  <input
+                    type="checkbox"
+                    checked={state.removeBackground}
+                    onChange={(event) => onRemoveBackgroundChange(event.target.checked)}
+                  />
+                  <span>
+                    自动去除背景
+                    <span className="field-hint">
+                      该模型不产透明底。海报右侧图形需要透明，默认自动抠掉背景；
+                      若发现主体被误伤，可关掉后重新生成。
+                    </span>
+                  </span>
+                </label>
+              )}
             </div>
 
             {/* AI 生成按钮 */}
@@ -249,6 +240,15 @@ export function EditorPanel({
                   <img src={state.aiGeneratedDataUrl} alt="AI 生成预览" />
                   <span className="ai-preview-label">已生成</span>
                 </div>
+              ) : null}
+              {state.generationTrace ? (
+                <p className="field-hint trace-hint">
+                  按关键词命中「{state.generationTrace.sceneName}」场景模板
+                  {state.generationTrace.matchedCategories.length
+                    ? `（${state.generationTrace.matchedCategories.join("、")}）`
+                    : "（未命中关键词，按当前海报类型兜底）"}
+                  。出图方向不对时，先调整上方的功能关键词。
+                </p>
               ) : null}
               <button
                 type="button"
@@ -272,34 +272,27 @@ export function EditorPanel({
 
       <div className="panel-section">
         <h2>图形文字</h2>
-        <label>
-          顶部文字
-          <input
-            value={state.graphicOverlayText.topText}
-            onChange={(event) => onGraphicOverlayTextChange("topText", event.target.value)}
-          />
-        </label>
-        <label>
-          标签
-          <input
-            value={state.graphicOverlayText.label}
-            onChange={(event) => onGraphicOverlayTextChange("label", event.target.value)}
-          />
-        </label>
-        <label>
-          按钮文字
-          <input
-            value={state.graphicOverlayText.buttonText}
-            onChange={(event) => onGraphicOverlayTextChange("buttonText", event.target.value)}
-          />
-        </label>
-        <label>
-          徽章文字
-          <input
-            value={state.graphicOverlayText.badgeText}
-            onChange={(event) => onGraphicOverlayTextChange("badgeText", event.target.value)}
-          />
-        </label>
+        {state.graphicSource === "library" ? (
+          activeVisual.editableTextFields.length ? (
+            activeVisual.editableTextFields.map((field) => (
+              <label key={field.id}>
+                {field.label}
+                <input
+                  value={graphicTextValue(activeVisual, activeValues, field.id)}
+                  maxLength={field.maxLength}
+                  onChange={(event) => onGraphicTextFieldChange(field.id, event.target.value)}
+                />
+              </label>
+            ))
+          ) : (
+            <p className="field-hint">当前图形没有可编辑的文字槽位。</p>
+          )
+        ) : (
+          <p className="field-hint">
+            图形文字只能叠加在素材图库的图形上——文字位置是按那几张素材逐个标定的，
+            套到 AI 生成图或上传图上会错位。切换到「素材图库」即可编辑。
+          </p>
+        )}
       </div>
     </aside>
   );

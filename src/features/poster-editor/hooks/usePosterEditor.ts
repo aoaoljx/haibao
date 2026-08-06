@@ -1,27 +1,28 @@
-import { useCallback, useMemo, useState, useEffect } from "react";
-import type { ImageProviderConfig, ImageProviderId } from "@providers";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  configuredProviders,
+  defaultProvider,
+  isImageProviderId,
+  providerExtras,
+  providerModel,
+  type ImageProviderConfig,
+  type ImageProviderId
+} from "@providers";
 import {
   clonePosterCopy,
   createDefaultGraphicTextState,
   posterPresets
 } from "@/shared/poster/defaults";
-import { visualMapping } from "@/shared/poster/visualMapping";
+import { toPromptTextSlots } from "@/shared/poster/graphicText";
+import { getVisualByKey, visualMapping } from "@/shared/poster/visualMapping";
 import type {
+  GraphicSource,
   PosterCopy,
   PosterMode,
   VisualKey,
   VisualTextValueMap
 } from "@/shared/poster/types";
-import { generateVisualImage } from "@/services/visual-generation";
-
-export type GraphicSource = "ai" | "library" | "upload";
-
-export interface GraphicOverlayText {
-  topText: string;
-  label: string;
-  buttonText: string;
-  badgeText: string;
-}
+import { generateVisualImage, type VisualGenerationTrace } from "@/services/visual-generation";
 
 type GraphicTextByMode = Record<PosterMode, Record<VisualKey, VisualTextValueMap>>;
 
@@ -33,9 +34,11 @@ export interface PosterEditorState {
   graphicSource: GraphicSource;
   libraryVisualKey: VisualKey;
   uploadedFileName: string;
+  uploadedImage: HTMLImageElement | null;
   keywords: string;
   providerConfig: ImageProviderConfig;
-  graphicOverlayText: GraphicOverlayText;
+  removeBackground: boolean;
+  generationTrace: VisualGenerationTrace | null;
   statusMessage: string;
   statusKind: "" | "ok" | "error";
   aiGeneratedImage: HTMLImageElement | null;
@@ -43,55 +46,41 @@ export interface PosterEditorState {
   isGenerating: boolean;
 }
 
-const STORAGE_KEY = "idevflow-poster-provider-config";
+/** 记住上次选的模型。只是个偏好，不含任何凭据。 */
+const SELECTED_PROVIDER_KEY = "idevflow-poster-selected-provider";
 
-/** 从 localStorage 加载保存的配置 */
-function loadSavedProviderConfig(): ImageProviderConfig {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      // 确保结构完整
-      return {
-        provider: parsed.provider || "gpt-image",
-        apiKey: parsed.apiKey || "",
-        baseUrl: parsed.baseUrl || "",
-        model: parsed.model || "",
-        workflowId: parsed.workflowId || "",
-        apiVersion: parsed.apiVersion || "",
-        timeoutMs: parsed.timeoutMs || 120000,
-        extra: parsed.extra || {}
-      };
-    }
-  } catch (error) {
-    console.warn("加载保存的配置失败:", error);
-  }
+/**
+ * 组装当前的 Provider 配置。
+ *
+ * 密钥不在这里——它由 vite 服务端从 .env 读取并在转发时注入请求头。
+ * 这里只有「用哪个模型」和一些非机密调节项。
+ */
+function buildProviderConfig(provider: ImageProviderId): ImageProviderConfig {
   return {
-    provider: "gpt-image",
-    apiKey: "",
-    baseUrl: "",
-    model: "",
-    workflowId: "",
-    apiVersion: "",
-    timeoutMs: 120000,
-    extra: {}
+    provider,
+    model: providerModel(provider),
+    extra: providerExtras(provider)
   };
 }
 
-/** 保存配置到 localStorage */
-function saveProviderConfig(config: ImageProviderConfig): void {
+/** 读取上次选择；已失效（比如 .env 里删了对应的 Key）时回落到默认 */
+function loadSelectedProvider(): ImageProviderId {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
-  } catch (error) {
-    console.warn("保存配置失败:", error);
+    const saved = localStorage.getItem(SELECTED_PROVIDER_KEY);
+    if (saved && isImageProviderId(saved) && configuredProviders().includes(saved)) {
+      return saved;
+    }
+  } catch {
+    // localStorage 不可用时按默认走，不打断使用
   }
+  return defaultProvider();
 }
 
 export function usePosterEditor() {
   const [mode, setMode] = useState<PosterMode>("feature");
   const [copy, setCopy] = useState<PosterCopy>(() => clonePosterCopy(posterPresets.feature.copy));
   const [visualKey, setVisualKey] = useState<VisualKey>("graphic1");
-  const [graphicTextByMode] = useState<GraphicTextByMode>(() => ({
+  const [graphicTextByMode, setGraphicTextByMode] = useState<GraphicTextByMode>(() => ({
     feature: createDefaultGraphicTextState(),
     ai: createDefaultGraphicTextState()
   }));
@@ -109,34 +98,30 @@ export function usePosterEditor() {
     feature: "",
     ai: ""
   });
+  const [uploadedImageByMode, setUploadedImageByMode] = useState<
+    Record<PosterMode, HTMLImageElement | null>
+  >({
+    feature: null,
+    ai: null
+  });
   const [keywordsByMode, setKeywordsByMode] = useState<Record<PosterMode, string>>({
     feature: deriveKeywords(posterPresets.feature.copy),
     ai: deriveKeywords(posterPresets.ai.copy)
   });
-  
-  // 从 localStorage 加载配置，而不是使用硬编码默认值
-  const [providerConfig, setProviderConfig] = useState<ImageProviderConfig>(loadSavedProviderConfig);
-  
+
+  // 只记「用哪个模型」，密钥在服务端
+  const [selectedProvider, setSelectedProvider] = useState<ImageProviderId>(loadSelectedProvider);
+  const providerConfig = useMemo(() => buildProviderConfig(selectedProvider), [selectedProvider]);
+
   const [keywordTouchedByMode, setKeywordTouchedByMode] = useState<Record<PosterMode, boolean>>({
     feature: false,
     ai: false
   });
-  const [graphicOverlayTextByMode, setGraphicOverlayTextByMode] = useState<
-    Record<PosterMode, GraphicOverlayText>
-  >({
-    feature: {
-      topText: "iDevflow",
-      label: "",
-      buttonText: "提交",
-      badgeText: ""
-    },
-    ai: {
-      topText: "AI",
-      label: "测试用例",
-      buttonText: "生成",
-      badgeText: "beta版"
-    }
-  });
+  // 模型不产透明底时在客户端去背。默认开启；万一去背伤到主体，运营可以关掉重试。
+  const [removeBackground, setRemoveBackground] = useState(true);
+  // Prompt Engine 命中的场景与类目。规则引擎本来就算好了，摊开给运营看，
+  // 出图不对时能判断是关键词没写对还是模型不给力。
+  const [generationTrace, setGenerationTrace] = useState<VisualGenerationTrace | null>(null);
   const [statusMessage, setStatusMessage] = useState("");
   const [statusKind, setStatusKind] = useState<"" | "ok" | "error">("");
   const [aiGeneratedImageByMode, setAiGeneratedImageByMode] = useState<
@@ -153,10 +138,26 @@ export function usePosterEditor() {
   });
   const [isGenerating, setIsGenerating] = useState(false);
 
-  // 每次配置变更时自动保存到 localStorage
+  // 记住模型选择，方便下次打开。存的只是个 Provider ID，不含凭据。
   useEffect(() => {
-    saveProviderConfig(providerConfig);
-  }, [providerConfig]);
+    try {
+      localStorage.setItem(SELECTED_PROVIDER_KEY, selectedProvider);
+    } catch {
+      // 隐私模式等场景下写不进去，不影响使用
+    }
+  }, [selectedProvider]);
+
+  // 卸载时释放上传图片占用的 object URL。
+  // 用 ref 读最新值 + 空依赖，避免把仍在使用的图提前 revoke 掉。
+  const uploadedImagesRef = useRef(uploadedImageByMode);
+  uploadedImagesRef.current = uploadedImageByMode;
+  useEffect(() => {
+    return () => {
+      for (const image of Object.values(uploadedImagesRef.current)) {
+        revokeObjectUrl(image);
+      }
+    };
+  }, []);
 
   const state: PosterEditorState = useMemo(
     () => ({
@@ -167,9 +168,11 @@ export function usePosterEditor() {
       graphicSource: graphicSourceByMode[mode],
       libraryVisualKey: libraryVisualByMode[mode],
       uploadedFileName: uploadedFileNameByMode[mode],
+      uploadedImage: uploadedImageByMode[mode],
       keywords: keywordTouchedByMode[mode] ? keywordsByMode[mode] : deriveKeywords(copy),
       providerConfig,
-      graphicOverlayText: graphicOverlayTextByMode[mode],
+      removeBackground,
+      generationTrace,
       statusMessage,
       statusKind,
       aiGeneratedImage: aiGeneratedImageByMode[mode],
@@ -178,7 +181,6 @@ export function usePosterEditor() {
     }),
     [
       copy,
-      graphicOverlayTextByMode,
       graphicSourceByMode,
       graphicTextByMode,
       keywordTouchedByMode,
@@ -186,9 +188,12 @@ export function usePosterEditor() {
       libraryVisualByMode,
       mode,
       providerConfig,
+      removeBackground,
+      generationTrace,
       statusKind,
       statusMessage,
       uploadedFileNameByMode,
+      uploadedImageByMode,
       visualKey,
       aiGeneratedImageByMode,
       aiGeneratedDataUrlByMode,
@@ -284,11 +289,31 @@ export function usePosterEditor() {
   );
 
   const updateUploadedFile = useCallback(
-    (file: File | null) => {
+    async (file: File | null) => {
       setUploadedFileNameByMode((current) => ({
         ...current,
         [mode]: file?.name || ""
       }));
+
+      if (!file) {
+        setUploadedImageByMode((current) => {
+          revokeObjectUrl(current[mode]);
+          return { ...current, [mode]: null };
+        });
+        return;
+      }
+
+      try {
+        const image = await loadImageFromFile(file);
+        setUploadedImageByMode((current) => {
+          // 换图时释放上一张的 object URL，避免长时间使用累积内存
+          revokeObjectUrl(current[mode]);
+          return { ...current, [mode]: image };
+        });
+        setStatus("");
+      } catch {
+        setStatus("图片读取失败，请换一张试试。", "error");
+      }
     },
     [mode]
   );
@@ -307,67 +332,44 @@ export function usePosterEditor() {
     [mode]
   );
 
-  // 切换模型时保留已有配置，只更新 provider 字段
   const updateProvider = useCallback((provider: ImageProviderId) => {
-    setProviderConfig((current) => ({
-      ...current,
-      provider
-      // 不再清空 model、workflowId、apiVersion，保留用户之前的配置
-    }));
+    setSelectedProvider(provider);
     setStatusMessage("");
     setStatusKind("");
   }, []);
 
-  const updateProviderConfigField = useCallback(
-    (field: keyof ImageProviderConfig | `extra.${string}`, value: string) => {
-      setProviderConfig((current) => {
-        if (field.startsWith("extra.")) {
-          return {
-            ...current,
-            extra: {
-              ...current.extra,
-              [field.slice("extra.".length)]: value
-            }
-          };
-        }
-
-        if (field === "timeoutMs") {
-          return {
-            ...current,
-            timeoutMs: value ? Number(value) : undefined
-          };
-        }
-
-        return {
-          ...current,
-          [field]: value
-        };
-      });
-      setStatusMessage("");
-      setStatusKind("");
-    },
-    []
-  );
-
-  const updateGraphicOverlayText = useCallback(
-    (field: keyof GraphicOverlayText, value: string) => {
-      setGraphicOverlayTextByMode((current) => ({
+  /**
+   * 修改当前图形的某个文字槽位。
+   *
+   * 这里是图形文字的唯一真相源：画布和 Prompt 都读它。
+   * 此前存在两份互不相通的 state——面板改的那份只喂 Prompt，
+   * 画布读的那份没有 setter 永远是默认值，于是"改了看不到变化"。
+   */
+  const updateGraphicTextField = useCallback(
+    (fieldId: string, value: string) => {
+      setGraphicTextByMode((current) => ({
         ...current,
         [mode]: {
           ...current[mode],
-          [field]: value
+          [visualKey]: {
+            ...current[mode][visualKey],
+            [fieldId]: value
+          }
         }
       }));
     },
-    [mode]
+    [mode, visualKey]
   );
 
   const generateVisual = useCallback(async () => {
     if (isGenerating) return;
 
-    // 校验 API Key
-    if (!providerConfig.apiKey?.trim()) {
-      setStatus("请先配置模型接口的 API Key。", "error");
+    // 密钥在服务端，前端只能检查这个模型有没有被配置过
+    if (!configuredProviders().includes(providerConfig.provider)) {
+      setStatus(
+        "还没有可用的图片模型。请在项目根目录的 .env 里填入对应的 API Key（参考 .env.example），然后重启服务。",
+        "error"
+      );
       return;
     }
 
@@ -385,7 +387,14 @@ export function usePosterEditor() {
         titleDark: copy.titleDark,
         featurePoints: copy.featurePoints,
         keywords: currentKeywords,
-        graphicText: graphicOverlayTextByMode[mode],
+        // 把当前图形的各字段折算成 Prompt 需要的四类槽位
+        graphicText: toPromptTextSlots(
+          getVisualByKey(visualKey),
+          graphicTextByMode[mode][visualKey]
+        ),
+        // 按图形最终要落进的槽位反推请求尺寸，避免生成方图后被拉伸
+        targetBounds: getVisualByKey(visualKey).posterBounds,
+        removeBackground,
         providerConfig
       });
 
@@ -412,8 +421,13 @@ export function usePosterEditor() {
         [mode]: "ai"
       }));
 
+      setGenerationTrace(result.trace);
+
+      const modelLabel = result.image.model || providerConfig.provider;
       setStatus(
-        `图形生成成功！（模型：${result.image.model || providerConfig.provider}）`,
+        result.backgroundRemoved
+          ? `图形生成成功，已自动去除背景（模型：${modelLabel}）`
+          : `图形生成成功。该模型不产透明底，图形可能带背景色块，可在预览中确认（模型：${modelLabel}）`,
         "ok"
       );
     } catch (error) {
@@ -429,7 +443,9 @@ export function usePosterEditor() {
     keywordTouchedByMode,
     keywordsByMode,
     copy,
-    graphicOverlayTextByMode
+    graphicTextByMode,
+    visualKey,
+    removeBackground
   ]);
 
   const setStatus = useCallback((message: string, kind: "" | "ok" | "error" = "") => {
@@ -450,11 +466,37 @@ export function usePosterEditor() {
     updateUploadedFile,
     updateKeywords,
     updateProvider,
-    updateProviderConfigField,
-    updateGraphicOverlayText,
+    updateGraphicTextField,
+    updateRemoveBackground: setRemoveBackground,
     generateVisual,
     setStatus
   };
+}
+
+/**
+ * 把上传的文件解码成可直接 drawImage 的图片。
+ *
+ * 用 object URL 而不是 base64 data URL：大图转 base64 会占用可观内存，
+ * 而这张图只在本次会话里画到 canvas 上，不需要序列化。
+ * 代价是必须自己 revoke，见 revokeObjectUrl()。
+ */
+function loadImageFromFile(file: File): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("无法解码上传的图片"));
+    };
+    image.src = url;
+  });
+}
+
+function revokeObjectUrl(image: HTMLImageElement | null) {
+  if (image?.src.startsWith("blob:")) {
+    URL.revokeObjectURL(image.src);
+  }
 }
 
 function deriveKeywords(copy: PosterCopy) {

@@ -1,4 +1,4 @@
-import { createImageProvider, getImageProviderDefinition, isImageProviderId } from "./registry";
+import { createImageProvider, isImageProviderId } from "./registry";
 import { normalizeImageInput, normalizeProviderConfig } from "./shared";
 import type { GenerateImageInput, GenerateImageResult, ImageProviderConfig } from "./types";
 
@@ -14,8 +14,4 @@ export async function generateImage(
   const normalizedConfig = normalizeProviderConfig(config);
   const provider = createImageProvider(normalizedConfig.provider);
   return provider.generateImage(normalizedInput, normalizedConfig);
-}
-
-export function getManualApiConfigFields(provider: ImageProviderConfig["provider"]) {
-  return getImageProviderDefinition(provider).configFields;
 }

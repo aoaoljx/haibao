@@ -1,4 +1,4 @@
-export { generateImage, getManualApiConfigFields } from "./modelAdapter";
+export { generateImage } from "./modelAdapter";
 export {
   createImageProvider,
   getImageProviderDefinition,
@@ -7,6 +7,13 @@ export {
   isImageProviderId,
   listImageProviderDefinitions
 } from "./registry";
+export {
+  configuredProviders,
+  defaultProvider,
+  providerExtras,
+  providerModel,
+  providersAwaitingAdapter
+} from "./runtimeConfig";
 export {
   createPngResult,
   DEFAULT_IMAGE_SIZE,
@@ -23,7 +30,5 @@ export type {
   ImageProviderDefinition,
   ImageProviderId,
   ImageSize,
-  ProviderConfigField,
-  ProviderConfigFieldType,
   ProviderKind
 } from "./types";

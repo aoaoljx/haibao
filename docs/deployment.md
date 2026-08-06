@@ -71,8 +71,62 @@ server {
     try_files $uri =404;
     add_header Cache-Control "public, max-age=31536000, immutable";
   }
+
+  # ---- 模型 API 反向代理（缺了这段，AI 生成会 404）----
+  # 前端不会直连模型 API（浏览器 CORS 会拦），而是把请求改写成 /api/<provider>/...
+  # 前缀只代表 origin，后面就是目标 host 上的完整路径。
+  # location 与 proxy_pass 都必须带结尾斜杠，Nginx 才会把前缀替换掉而不是拼接。
+  #
+  #   /api/dashscope/api/v1/services/aigc/text2image/image-synthesis
+  #   → https://dashscope.aliyuncs.com/api/v1/services/aigc/text2image/image-synthesis
+  #
+  # 映射表以 providers/apiProxyMap.ts 为准，增删 Provider 时两边要一起改。
+
+  location /api/dashscope/ {
+    proxy_pass https://dashscope.aliyuncs.com/;
+    proxy_set_header Host dashscope.aliyuncs.com;
+    proxy_ssl_server_name on;
+    proxy_read_timeout 300s;
+  }
+
+  location /api/openai/ {
+    proxy_pass https://api.openai.com/;
+    proxy_set_header Host api.openai.com;
+    proxy_ssl_server_name on;
+    proxy_read_timeout 300s;
+  }
+
+  location /api/replicate/ {
+    proxy_pass https://api.replicate.com/;
+    proxy_set_header Host api.replicate.com;
+    proxy_ssl_server_name on;
+    proxy_read_timeout 300s;
+  }
+
+  location /api/gemini/ {
+    proxy_pass https://generativelanguage.googleapis.com/;
+    proxy_set_header Host generativelanguage.googleapis.com;
+    proxy_ssl_server_name on;
+    proxy_read_timeout 300s;
+  }
+
+  location /api/flux/ {
+    proxy_pass https://api.bfl.ml/;
+    proxy_set_header Host api.bfl.ml;
+    proxy_ssl_server_name on;
+    proxy_read_timeout 300s;
+  }
+
+  location /api/ideogram/ {
+    proxy_pass https://api.ideogram.ai/;
+    proxy_set_header Host api.ideogram.ai;
+    proxy_ssl_server_name on;
+    proxy_read_timeout 300s;
+  }
 }
 ```
+
+`proxy_ssl_server_name on` 不能省：上游是 HTTPS，缺了 SNI 会握手失败。
 
 重载 Nginx：
 
@@ -80,6 +134,26 @@ server {
 nginx -t
 systemctl reload nginx
 ```
+
+### 代理是开放转发，注意暴露面
+
+这些 `location` 会把任何人发到本站的请求转发给对应模型厂商。调用方需要自带 API Key
+（Key 来自浏览器输入，不存在服务器上），所以不会盗刷你的额度，但站点仍然成了这五个域名的
+公开转发通道。如果服务对公网开放，建议至少加内网 IP 白名单或登录鉴权：
+
+```nginx
+location /api/dashscope/ {
+  allow 10.0.0.0/8;
+  deny all;
+  # ...其余同上
+}
+```
+
+### 纯静态托管（对象存储 / CDN）无法直接支持 AI 生成
+
+对象存储和多数静态托管平台不能配反向代理。把 `dist/` 直接丢上去，海报编辑和导出都正常，
+但 AI 生成会因为拿不到 `/api/*` 转发而失败。这种场景需要另外准备一个能反代的入口
+（Nginx、网关、或平台自带的 Edge Function / Rewrites 能力）。
 
 ## 模型接口配置
 
