@@ -407,30 +407,38 @@ export function renderPoster(canvas: HTMLCanvasElement, input: PosterRenderInput
     const size = slot.fontSize * scale;
     const maxWidth = slot.maxWidth * scale;
 
-    if (slot.styleToken === "embossedWhite") {
-      drawEmbossedWhiteText(text, x, y, size, maxWidth, false, slot.align);
-      return;
-    }
-    if (slot.styleToken === "stackedWhite") {
-      drawStackedGraphicText(text, x, y, size, maxWidth);
-      return;
-    }
-    if (slot.styleToken === "stackedLightBlue") {
-      drawStackedGraphicText(text, x, y, size, maxWidth, "#f6fbff", "#4b85fb");
-      return;
-    }
-    if (slot.styleToken === "plainWhite") {
-      drawPlainGraphicText(text, x, y, size, maxWidth, "#ffffff", true, slot.align);
-      return;
-    }
-    if (slot.styleToken === "plainBlueItalic") {
-      drawPlainGraphicText(text, x, y, size, maxWidth, "#3c79c8", true, slot.align, true);
-      return;
-    }
-    if (slot.styleToken === "plainBlue") {
-      const isCoderTitle = visual.key === "graphic4" && slot.fieldId === "coder";
-      const color = slot.fieldId === "status" ? "#4d88f7" : "#3474c2";
-      drawPlainGraphicText(text, x, y, size, maxWidth, color, !isCoderTitle, slot.align, isCoderTitle);
+    switch (slot.styleToken) {
+      case "embossedWhite":
+        drawEmbossedWhiteText(text, x, y, size, maxWidth, false, slot.align);
+        return;
+      case "embossedWhiteItalic":
+        drawEmbossedWhiteText(text, x, y, size, maxWidth, true, slot.align);
+        return;
+      case "stackedWhite":
+        drawStackedGraphicText(text, x, y, size, maxWidth);
+        return;
+      case "stackedLightBlue":
+        drawStackedGraphicText(text, x, y, size, maxWidth, "#f6fbff", "#4b85fb");
+        return;
+      case "plainWhite":
+        drawPlainGraphicText(text, x, y, size, maxWidth, "#ffffff", true, slot.align);
+        return;
+      case "plainBlueItalic":
+        drawPlainGraphicText(text, x, y, size, maxWidth, "#3c79c8", true, slot.align, true);
+        return;
+      case "plainBlue": {
+        const isCoderTitle = visual.key === "graphic4" && slot.fieldId === "coder";
+        const color = slot.fieldId === "status" ? "#4d88f7" : "#3474c2";
+        drawPlainGraphicText(
+          text, x, y, size, maxWidth, color, !isCoderTitle, slot.align, isCoderTitle
+        );
+        return;
+      }
+      default:
+        // 数据里新增了样式但忘了加分支时，此前会静默不画
+        // （embossedWhiteItalic 就这样让 graphic1/graphic2 的品牌文字一直没出来）。
+        // 宁可用默认样式画出来，也不要让运营看不见自己填的字。
+        drawPlainGraphicText(text, x, y, size, maxWidth, "#ffffff", true, slot.align);
     }
   }
 
