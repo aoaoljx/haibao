@@ -1,4 +1,4 @@
-import { API_PROXY_ENTRIES } from "./apiProxyMap";
+import { toProxyPath } from "./apiProxyMap";
 import type {
   GenerateImageInput,
   GenerateImageResult,
@@ -22,21 +22,9 @@ export const DEFAULT_PROVIDER_TIMEOUT_MS = 120000;
  * 映射表见 ./apiProxyMap.ts —— 那是唯一真相源。
  */
 export function proxyUrl(fullUrl: string): string {
-  // 非浏览器环境直接返回
+  // 非浏览器环境没有同源代理可用，直连
   if (typeof window === "undefined") return fullUrl;
-
-  try {
-    const url = new URL(fullUrl);
-    for (const { host, proxyPrefix } of API_PROXY_ENTRIES) {
-      if (url.hostname === host) {
-        return `${proxyPrefix}${url.pathname}${url.search}`;
-      }
-    }
-  } catch {
-    // URL 解析失败，回退到直连
-  }
-
-  return fullUrl;
+  return toProxyPath(fullUrl) ?? fullUrl;
 }
 
 export function normalizeImageInput(input: GenerateImageInput): Required<

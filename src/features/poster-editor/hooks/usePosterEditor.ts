@@ -5,7 +5,7 @@ import {
   createDefaultGraphicTextState,
   posterPresets
 } from "@/shared/poster/defaults";
-import { visualMapping } from "@/shared/poster/visualMapping";
+import { getVisualByKey, visualMapping } from "@/shared/poster/visualMapping";
 import type {
   PosterCopy,
   PosterMode,
@@ -386,6 +386,8 @@ export function usePosterEditor() {
         featurePoints: copy.featurePoints,
         keywords: currentKeywords,
         graphicText: graphicOverlayTextByMode[mode],
+        // 按图形最终要落进的槽位反推请求尺寸，避免生成方图后被拉伸
+        targetBounds: getVisualByKey(visualKey).posterBounds,
         providerConfig
       });
 
@@ -429,7 +431,8 @@ export function usePosterEditor() {
     keywordTouchedByMode,
     keywordsByMode,
     copy,
-    graphicOverlayTextByMode
+    graphicOverlayTextByMode,
+    visualKey
   ]);
 
   const setStatus = useCallback((message: string, kind: "" | "ok" | "error" = "") => {

@@ -41,6 +41,29 @@ export function proxyTargetOrigin(entry: ApiProxyEntry): string {
 }
 
 /**
+ * 把完整 URL 映射成同源代理路径；host 未登记或 URL 非法时返回 null（表示直连）。
+ *
+ * 这里是纯函数，不看运行环境——环境判断留在 `proxyUrl()` 里，
+ * 这样映射规则本身可以直接测。
+ */
+export function toProxyPath(fullUrl: string): string | null {
+  let url: URL;
+  try {
+    url = new URL(fullUrl);
+  } catch {
+    return null;
+  }
+
+  for (const { host, proxyPrefix } of API_PROXY_ENTRIES) {
+    if (url.hostname === host) {
+      return `${proxyPrefix}${url.pathname}${url.search}`;
+    }
+  }
+
+  return null;
+}
+
+/**
  * 从代理路径中剥掉前缀，还原成目标 host 上的真实 pathname。
  *
  * 转发层必须做这一步：http-proxy 默认把收到的整条路径接在 target 后面，

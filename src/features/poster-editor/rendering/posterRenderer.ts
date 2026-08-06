@@ -1,3 +1,4 @@
+import { fitContain } from "@/shared/poster/geometry";
 import { getVisualByKey } from "@/shared/poster/visualMapping";
 import type {
   PosterCopy,
@@ -233,10 +234,12 @@ export function renderPoster(canvas: HTMLCanvasElement, input: PosterRenderInput
     const box = visual.posterBounds; // 使用相同的 posterBounds
 
     if (aiImg) {
+      // 等比放入槽位：模型出图比例和槽位对不上时留白，不拉伸
+      const fitted = fitContain(aiImg.naturalWidth, aiImg.naturalHeight, box);
       ctx.save();
       ctx.shadowColor = "rgba(112, 38, 244, 0.5)";
       ctx.shadowBlur = 60;
-      ctx.drawImage(aiImg, box.x, box.y, box.w, box.h);
+      ctx.drawImage(aiImg, fitted.x, fitted.y, fitted.w, fitted.h);
       ctx.restore();
       return;
     }
@@ -335,7 +338,9 @@ export function renderPoster(canvas: HTMLCanvasElement, input: PosterRenderInput
     const box = visual.posterBounds;
 
     if (aiImg) {
-      ctx.drawImage(aiImg, box.x, box.y, box.w, box.h);
+      // 等比放入槽位：模型出图比例和槽位对不上时留白，不拉伸
+      const fitted = fitContain(aiImg.naturalWidth, aiImg.naturalHeight, box);
+      ctx.drawImage(aiImg, fitted.x, fitted.y, fitted.w, fitted.h);
       return;
     }
 

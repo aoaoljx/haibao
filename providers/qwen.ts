@@ -93,8 +93,8 @@ export const QWEN_PROVIDER: ImageProviderDefinition = {
   ]
 };
 
-/** 将标准 ImageSize 映射为千问支持的尺寸 */
-function mapToQwenSize(size: string): string {
+/** 将标准 ImageSize 映射为千问支持的尺寸（导出仅为可测） */
+export function mapToQwenSize(size: string): string {
   const [w, h] = size.split("x").map(Number);
   if (!w || !h) return QWEN_SUPPORTED_SIZES[0];
 
