@@ -1,11 +1,7 @@
-import { createDefaultTextValues } from "./graphicText";
-import { visualMapping } from "./visualMapping";
 import type {
   PosterCopy,
   PosterMode,
-  VisualKey,
-  VisualSelection,
-  VisualTextValueMap
+  VisualSelection
 } from "./types";
 
 export interface PosterPreset {
@@ -48,10 +44,4 @@ export function clonePosterCopy(copy: PosterCopy): PosterCopy {
     ...copy,
     featurePoints: [...copy.featurePoints]
   };
-}
-
-export function createDefaultGraphicTextState(): Record<VisualKey, VisualTextValueMap> {
-  return Object.fromEntries(
-    visualMapping.visuals.map((visual) => [visual.key, createDefaultTextValues(visual)])
-  ) as Record<VisualKey, VisualTextValueMap>;
 }

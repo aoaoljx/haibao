@@ -45,7 +45,6 @@ export function PosterEditorPage() {
         mode: editor.state.mode,
         copy: editor.state.copy,
         visualKey: editor.state.visualKey,
-        graphicText: editor.state.graphicText,
         graphicSource: editor.state.graphicSource,
         images: assets.images,
         aiGeneratedImage: editor.state.aiGeneratedImage,
@@ -109,7 +108,6 @@ export function PosterEditorPage() {
           onUploadedFileChange={editor.updateUploadedFile}
           onKeywordsChange={editor.updateKeywords}
           onProviderChange={editor.updateProvider}
-          onGraphicTextFieldChange={editor.updateGraphicTextField}
           onRemoveBackgroundChange={editor.updateRemoveBackground}
           onGenerateVisual={editor.generateVisual}
         />

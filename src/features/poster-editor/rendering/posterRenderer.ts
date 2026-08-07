@@ -1,21 +1,20 @@
 import { fitContain } from "@/shared/poster/geometry";
-import { graphicTextValue } from "@/shared/poster/graphicText";
 import { getVisualByKey } from "@/shared/poster/visualMapping";
 import type {
   GraphicSource,
   PosterCopy,
   PosterMode,
-  VisualAsset,
-  VisualKey,
-  VisualTextRenderSlot,
-  VisualTextValueMap
+  VisualKey
 } from "@/shared/poster/types";
 
 export type PosterImages = {
   featureBg: HTMLImageElement;
+  aiBg: HTMLImageElement;
   logo: HTMLImageElement;
   logoAi: HTMLImageElement;
   productBadge: HTMLImageElement;
+  aiProductBadge: HTMLImageElement;
+  aiHero: HTMLImageElement;
 } & Record<VisualKey, HTMLImageElement>;
 
 export interface PosterRenderInput {
@@ -27,19 +26,17 @@ export interface PosterRenderInput {
   mode: PosterMode;
   copy: PosterCopy;
   visualKey: VisualKey;
-  graphicText: Record<VisualKey, VisualTextValueMap>;
   images: PosterImages;
 }
 
 /**
  * 决定右侧图形用哪张图。
  *
- * 只有素材图库的图能叠加图形文字——文字槽位坐标是按这几张固定素材标定的，
- * 套到 AI 出图或用户上传的图上只会错位。
+ * 素材图库资源按已标定槽位铺满；AI 出图和上传图片按比例完整放入。
  */
 interface ResolvedVisualSource {
   image: HTMLImageElement;
-  /** 是否为素材库资源（决定能否叠加图形文字，以及是否等比缩放） */
+  /** 是否为素材库资源（决定铺满还是等比缩放） */
   isLibraryAsset: boolean;
 }
 
@@ -52,29 +49,35 @@ interface ResolvedVisualSource {
  */
 interface PosterTheme {
   /** 背景：贴图或渐变 */
-  background: { kind: "image"; asset: "featureBg" } | { kind: "gradient"; stops: string[] };
+  background:
+    | { kind: "image"; asset: "featureBg" | "aiBg" }
+    | { kind: "gradient"; stops: string[] };
   /** 左上角 Logo。fixed 沿用既有固定尺寸；aspect 按原始比例对齐高度 */
   logo:
-    | { asset: "logo"; fit: "fixed"; width: number; height: number }
+    | { asset: "logo" | "logoAi"; fit: "fixed"; width: number; height: number }
     | { asset: "logoAi"; fit: "aspect"; height: number; fallbackWidth: number; fallbackHeight: number };
-  titlePrimary: string;
-  /** 强调标题的填充。渐变按文字实际宽度现场构造 */
+  productBadge: "productBadge" | "aiProductBadge";
+  /** 标题填充。渐变按文字实际宽度现场构造 */
+  titlePrimary: { kind: "solid"; color: string } | { kind: "gradient"; stops: string[] };
   titleAccent: { kind: "solid"; color: string } | { kind: "gradient"; stops: string[] };
   subtitleColor: string;
   /** 副标题起始 x。feature 版对特定标题有历史微调，保留原行为 */
   subtitleX: (primaryTitle: string) => number;
   featurePoint: { bullet: string; label: string; description: string };
   notice: { style: "badge"; color: string } | { style: "plain"; color: string };
-  /** 深色版专属装饰 */
+  /** 模式专属装饰 */
   decorations: { particles: boolean; tagline: boolean };
+  showFeaturePoints: boolean;
   visualShadow: { color: string; blur: number } | null;
+  noticeX: number;
 }
 
 const POSTER_THEMES: Record<PosterMode, PosterTheme> = {
   feature: {
     background: { kind: "image", asset: "featureBg" },
     logo: { asset: "logo", fit: "fixed", width: 1495, height: 200 },
-    titlePrimary: "#2180f7",
+    productBadge: "productBadge",
+    titlePrimary: { kind: "solid", color: "#2180f7" },
     titleAccent: { kind: "solid", color: "#0c1f75" },
     subtitleColor: "#0c1f75",
     // 「统一…」开头的标题会被前面的图形压住，历史上单独右移过，保留
@@ -82,23 +85,28 @@ const POSTER_THEMES: Record<PosterMode, PosterTheme> = {
     featurePoint: { bullet: "#3a5684", label: "#324e7b", description: "#324e7b" },
     notice: { style: "badge", color: "#34527f" },
     decorations: { particles: false, tagline: false },
+    showFeaturePoints: true,
+    noticeX: 320,
     visualShadow: null
   },
   ai: {
-    background: { kind: "gradient", stops: ["#0a0e27", "#0f1535", "#1a1f4e"] },
-    logo: { asset: "logoAi", fit: "aspect", height: 200, fallbackWidth: 660, fallbackHeight: 208 },
-    titlePrimary: "#ffffff",
-    titleAccent: { kind: "gradient", stops: ["#7026f4", "#258bf8", "#50c7da"] },
-    subtitleColor: "rgba(255, 255, 255, 0.85)",
+    background: { kind: "image", asset: "aiBg" },
+    logo: { asset: "logoAi", fit: "fixed", width: 1495, height: 200 },
+    productBadge: "aiProductBadge",
+    titlePrimary: { kind: "gradient", stops: ["#52e3dd", "#4f93f3", "#a178ff"] },
+    titleAccent: { kind: "solid", color: "#ffffff" },
+    subtitleColor: "#ffffff",
     subtitleX: () => 160,
     featurePoint: {
-      bullet: "rgba(112, 38, 244, 0.8)",
+      bullet: "rgba(255, 255, 255, 0.8)",
       label: "#ffffff",
-      description: "rgba(255, 255, 255, 0.7)"
+      description: "rgba(255, 255, 255, 0.82)"
     },
-    notice: { style: "plain", color: "rgba(255, 255, 255, 0.6)" },
-    decorations: { particles: true, tagline: true },
-    visualShadow: { color: "rgba(112, 38, 244, 0.5)", blur: 60 }
+    notice: { style: "plain", color: "#ffffff" },
+    decorations: { particles: false, tagline: false },
+    showFeaturePoints: false,
+    noticeX: 160,
+    visualShadow: null
   }
 };
 
@@ -123,10 +131,10 @@ export function renderPoster(canvas: HTMLCanvasElement, input: PosterRenderInput
     drawBackground();
     if (theme.decorations.particles) drawTechParticles();
     drawLogo();
-    ctx.drawImage(images.productBadge, 160, 470, 585, 198);
+    ctx.drawImage(images[theme.productBadge], 160, 470, 585, 198);
     drawTitles();
     drawSubtitle();
-    drawFeaturePoints(1180, 430);
+    if (theme.showFeaturePoints) drawFeaturePoints(1180, 430);
     if (val("notice")) drawNotice();
     if (theme.decorations.tagline) drawBottomTagline();
     drawVisualInto(theme.visualShadow);
@@ -167,21 +175,29 @@ export function renderPoster(canvas: HTMLCanvasElement, input: PosterRenderInput
     const accent = val("titleDark");
 
     ctx.font = font(accent ? 174 : 184, 800, true);
-    ctx.fillStyle = theme.titlePrimary;
+    ctx.fillStyle = resolveTitleFill(
+      theme.titlePrimary,
+      160,
+      ctx.measureText(primary).width
+    );
     ctx.fillText(primary, 160, 930);
 
     if (!accent) return;
 
     const accentX = 160 + ctx.measureText(primary).width + 45;
-    ctx.fillStyle = resolveAccentFill(accentX, ctx.measureText(accent).width);
+    ctx.fillStyle = resolveTitleFill(theme.titleAccent, accentX, ctx.measureText(accent).width);
     ctx.fillText(accent, accentX, 930);
   }
 
-  function resolveAccentFill(x: number, width: number): string | CanvasGradient {
-    if (theme.titleAccent.kind === "solid") return theme.titleAccent.color;
+  function resolveTitleFill(
+    fill: { kind: "solid"; color: string } | { kind: "gradient"; stops: string[] },
+    x: number,
+    width: number
+  ): string | CanvasGradient {
+    if (fill.kind === "solid") return fill.color;
 
     const gradient = ctx.createLinearGradient(x, 930 - 140, x + width, 930 - 140);
-    const { stops } = theme.titleAccent;
+    const { stops } = fill;
     stops.forEach((color, index) => {
       gradient.addColorStop(index / Math.max(1, stops.length - 1), color);
     });
@@ -244,6 +260,10 @@ export function renderPoster(canvas: HTMLCanvasElement, input: PosterRenderInput
       return { image: input.aiGeneratedImage, isLibraryAsset: false };
     }
 
+    if (input.mode === "ai" && input.graphicSource === "ai") {
+      return { image: images.aiHero, isLibraryAsset: false };
+    }
+
     if (input.graphicSource === "upload" && input.uploadedImage) {
       return { image: input.uploadedImage, isLibraryAsset: false };
     }
@@ -275,11 +295,6 @@ export function renderPoster(canvas: HTMLCanvasElement, input: PosterRenderInput
       ctx.drawImage(image, fitted.x, fitted.y, fitted.w, fitted.h);
     }
     ctx.restore();
-
-    // 文字槽位是按素材库图片标定的，只有用素材库图时才叠加
-    if (isLibraryAsset) {
-      drawGraphicText(visual, image);
-    }
   }
 
   /**
@@ -344,128 +359,7 @@ export function renderPoster(canvas: HTMLCanvasElement, input: PosterRenderInput
 
     ctx.fillStyle = theme.notice.color;
     ctx.font = font(72, 800, false);
-    ctx.fillText(val("notice"), 320, 1725);
-  }
-
-
-  function drawGraphicText(visual: VisualAsset, img: HTMLImageElement) {
-    if (!visual.editableTextFields.length) return;
-    const box = visual.posterBounds;
-    const naturalWidth = img.naturalWidth || visual.naturalSize.width;
-    const naturalHeight = img.naturalHeight || visual.naturalSize.height;
-    const scaleX = box.w / naturalWidth;
-    const scaleY = box.h / naturalHeight;
-    const tx = (x: number) => box.x + x * scaleX;
-    const ty = (y: number) => box.y + y * scaleY;
-    ctx.save();
-    for (const slot of visual.renderSlots) {
-      const text = graphicTextValue(visual, input.graphicText[visual.key], slot.fieldId);
-      drawGraphicSlot(visual, slot, text, tx(slot.x), ty(slot.y), scaleX);
-    }
-    ctx.restore();
-  }
-
-  function drawGraphicSlot(
-    visual: VisualAsset,
-    slot: VisualTextRenderSlot,
-    text: string,
-    x: number,
-    y: number,
-    scale: number
-  ) {
-    const size = slot.fontSize * scale;
-    const maxWidth = slot.maxWidth * scale;
-
-    switch (slot.styleToken) {
-      case "embossedWhite":
-        drawEmbossedWhiteText(text, x, y, size, maxWidth, false, slot.align);
-        return;
-      case "embossedWhiteItalic":
-        drawEmbossedWhiteText(text, x, y, size, maxWidth, true, slot.align);
-        return;
-      case "stackedWhite":
-        drawStackedGraphicText(text, x, y, size, maxWidth);
-        return;
-      case "stackedLightBlue":
-        drawStackedGraphicText(text, x, y, size, maxWidth, "#f6fbff", "#4b85fb");
-        return;
-      case "plainWhite":
-        drawPlainGraphicText(text, x, y, size, maxWidth, "#ffffff", true, slot.align);
-        return;
-      case "plainBlueItalic":
-        drawPlainGraphicText(text, x, y, size, maxWidth, "#3c79c8", true, slot.align, true);
-        return;
-      case "plainBlue": {
-        const isCoderTitle = visual.key === "graphic4" && slot.fieldId === "coder";
-        const color = slot.fieldId === "status" ? "#4d88f7" : "#3474c2";
-        drawPlainGraphicText(
-          text, x, y, size, maxWidth, color, !isCoderTitle, slot.align, isCoderTitle
-        );
-        return;
-      }
-      default:
-        // 数据里新增了样式但忘了加分支时，此前会静默不画
-        // （embossedWhiteItalic 就这样让 graphic1/graphic2 的品牌文字一直没出来）。
-        // 宁可用默认样式画出来，也不要让运营看不见自己填的字。
-        drawPlainGraphicText(text, x, y, size, maxWidth, "#ffffff", true, slot.align);
-    }
-  }
-
-  function drawEmbossedWhiteText(
-    text: string, x: number, baseline: number, size: number, maxWidth: number,
-    italic: boolean, align: CanvasTextAlign = "left"
-  ) {
-    drawPlainGraphicText(text, x, baseline, size, maxWidth, "#ffffff", true, align, italic, {
-      shadowColor: "rgba(0, 40, 120, 0.45)",
-      shadowBlur: Math.max(5, size * 0.08),
-      shadowOffsetY: Math.max(4, size * 0.08)
-    });
-  }
-
-  function drawPlainGraphicText(
-    text: string, x: number, baseline: number, size: number, maxWidth: number,
-    color: string, bold = true, align: CanvasTextAlign = "left", italic = false,
-    shadow: { shadowColor: string; shadowBlur: number; shadowOffsetY: number } | null = null
-  ) {
-    ctx.save();
-    ctx.font = font(size, bold ? 800 : 700, italic);
-    ctx.fillStyle = color;
-    if (shadow) {
-      ctx.shadowColor = shadow.shadowColor;
-      ctx.shadowBlur = shadow.shadowBlur;
-      ctx.shadowOffsetY = shadow.shadowOffsetY;
-    }
-    const value = compactToWidth(text, maxWidth);
-    let drawX = x;
-    if (align === "center") drawX = x + (maxWidth - ctx.measureText(value).width) / 2;
-    ctx.fillText(value, drawX, baseline);
-    ctx.restore();
-  }
-
-  function drawStackedGraphicText(
-    text: string, x: number, centerY: number, size: number, maxWidth: number,
-    color = "#ffffff", stroke = "rgba(48, 101, 220, 0.55)"
-  ) {
-    const raw = compactText(text, 8);
-    const lines = raw.length > 4 ? [raw.slice(0, 4), raw.slice(4)] : splitInHalf(raw);
-    ctx.save();
-    ctx.font = font(size, 800, true);
-    ctx.lineWidth = Math.max(3, size * 0.06);
-    ctx.strokeStyle = stroke;
-    ctx.fillStyle = color;
-    ctx.shadowColor = "rgba(0, 70, 160, 0.22)";
-    ctx.shadowBlur = Math.max(5, size * 0.08);
-    ctx.shadowOffsetY = Math.max(3, size * 0.04);
-    const gap = size * 1.08;
-    const startY = centerY - ((lines.length - 1) * gap) / 2;
-    lines.forEach((line, index) => {
-      const value = compactToWidth(line, maxWidth);
-      const drawX = x + (maxWidth - ctx.measureText(value).width) / 2;
-      const y = startY + index * gap;
-      ctx.strokeText(value, drawX, y);
-      ctx.fillText(value, drawX, y);
-    });
-    ctx.restore();
+    ctx.fillText(val("notice"), theme.noticeX, 1725);
   }
 
   function roundRect(
@@ -487,27 +381,8 @@ export function renderPoster(canvas: HTMLCanvasElement, input: PosterRenderInput
     const value = copy[field];
     return typeof value === "string" ? value.trim() : "";
   }
-
-  function compactToWidth(text: string, maxWidth: number) {
-    let value = String(text || "");
-    while (ctx.measureText(value).width > maxWidth && value.length > 1) {
-      value = value.slice(0, -1);
-    }
-    return value;
-  }
 }
 
 function font(px: number, weight = 800, italic = true) {
   return `${italic ? "italic " : ""}${weight} ${px}px "PingFang SC", "Microsoft YaHei", Arial, sans-serif`;
-}
-
-function compactText(text: string, maxLength: number) {
-  const clean = String(text || "").replace(/\s+/g, "");
-  return clean.length > maxLength ? clean.slice(0, maxLength) : clean;
-}
-
-function splitInHalf(text: string) {
-  if (text.length <= 2) return [text];
-  const mid = Math.ceil(text.length / 2);
-  return [text.slice(0, mid), text.slice(mid)];
 }

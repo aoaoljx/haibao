@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { renderPoster, type PosterImages, type PosterRenderInput } from "./posterRenderer";
-import { createDefaultGraphicTextState } from "@/shared/poster/defaults";
 import { getVisualByKey } from "@/shared/poster/visualMapping";
 import type { GraphicSource, PosterMode } from "@/shared/poster/types";
 
@@ -103,9 +102,12 @@ function createRecordingCanvas() {
 
 const libraryImages: Record<string, FakeImage> = {
   featureBg: createFakeImage("featureBg", 3840, 1920),
+  aiBg: createFakeImage("aiBg", 3840, 1920),
   logo: createFakeImage("logo"),
-  logoAi: createFakeImage("logoAi", 660, 208),
+  logoAi: createFakeImage("logoAi", 1495, 200),
   productBadge: createFakeImage("productBadge"),
+  aiProductBadge: createFakeImage("aiProductBadge", 584, 198),
+  aiHero: createFakeImage("aiHero", 1703, 1308),
   graphic1: createFakeImage("graphic1"),
   graphic2: createFakeImage("graphic2"),
   graphic3: createFakeImage("graphic3"),
@@ -124,7 +126,6 @@ function buildInput(overrides: Partial<PosterRenderInput> = {}): PosterRenderInp
       featurePoints: ["代码评论：标签化管理"]
     },
     visualKey: "graphic1",
-    graphicText: createDefaultGraphicTextState(),
     graphicSource: "library" as GraphicSource,
     images: libraryImages as unknown as PosterImages,
     aiGeneratedImage: null,
@@ -192,11 +193,26 @@ describe("renderPoster 的图形来源分支", () => {
     expect(findVisualDraw(drawImageCalls)?.image.id).toBe("uploaded");
   });
 
-  it("选了 AI 但还没生成时回落到素材图，不开天窗", () => {
-    const { canvas, drawImageCalls } = createRecordingCanvas();
-    renderPoster(canvas, buildInput({ graphicSource: "ai", aiGeneratedImage: null }));
+  it("选了 AI 但还没生成时按海报类型显示默认图，不开天窗", () => {
+    const feature = createRecordingCanvas();
+    renderPoster(
+      feature.canvas,
+      buildInput({ graphicSource: "ai", aiGeneratedImage: null })
+    );
 
-    expect(findVisualDraw(drawImageCalls)?.image.id).toBe("graphic1");
+    const ai = createRecordingCanvas();
+    renderPoster(
+      ai.canvas,
+      buildInput({
+        mode: "ai",
+        visualKey: "graphic5",
+        graphicSource: "ai",
+        aiGeneratedImage: null
+      })
+    );
+
+    expect(findVisualDraw(feature.drawImageCalls)?.image.id).toBe("graphic1");
+    expect(findVisualDraw(ai.drawImageCalls)?.image.id).toBe("aiHero");
   });
 });
 
@@ -234,73 +250,15 @@ describe("renderPoster 的外来图片等比绘制", () => {
   });
 });
 
-describe("renderPoster 的图形文字叠加", () => {
-  it("素材图上叠加图形文字", () => {
-    const { canvas, filledText } = createRecordingCanvas();
-    renderPoster(canvas, buildInput({ graphicSource: "library", visualKey: "graphic1" }));
-
-    expect(filledText).toContain("iDevflow");
-    expect(filledText).toContain("提交");
-  });
-
-  it("运营改过的文字生效——此前面板改了画布没反应", () => {
-    const graphicText = createDefaultGraphicTextState();
-    graphicText.graphic1 = { ...graphicText.graphic1, brand: "效能平台", action: "发布" };
-
-    const { canvas, filledText } = createRecordingCanvas();
-    renderPoster(canvas, buildInput({ graphicSource: "library", graphicText }));
-
-    expect(filledText).toContain("效能平台");
-    expect(filledText).toContain("发布");
-    expect(filledText).not.toContain("iDevflow");
-  });
-
-  it("AI 图上不叠加图形文字——槽位坐标是按素材图标定的", () => {
-    const aiImage = createFakeImage("ai-generated", 1472, 1104);
-    const { canvas, filledText } = createRecordingCanvas();
-    renderPoster(
-      canvas,
-      buildInput({
-        graphicSource: "ai",
-        aiGeneratedImage: aiImage as unknown as HTMLImageElement
-      })
-    );
-
-    expect(filledText).not.toContain("iDevflow");
-  });
-
-  it("AI 模式下素材图同样叠加图形文字——此前深色海报完全不画", () => {
-    const { canvas, filledText } = createRecordingCanvas();
-    renderPoster(
-      canvas,
-      buildInput({ mode: "ai", graphicSource: "library", visualKey: "graphic5" })
-    );
-
-    expect(filledText).toContain("测试用例");
-  });
-});
-
-describe("每张素材图的文字槽位都真的被画出来", () => {
-  // 回归：graphic1/graphic2 的 brand 槽位用了 embossedWhiteItalic，
-  // 而渲染器没有对应分支，品牌文字一直静默丢失。
+describe("素材图库图形直接渲染", () => {
   it.each(["graphic1", "graphic2", "graphic3", "graphic4", "graphic5"] as const)(
-    "%s 的每个槽位文字都出现在画布上",
+    "%s 只绘制素材本身，不再额外叠加图形文字",
     (visualKey) => {
       const { canvas, filledText } = createRecordingCanvas();
       renderPoster(canvas, buildInput({ graphicSource: "library", visualKey }));
 
-      const visual = getVisualByKey(visualKey);
-      for (const slot of visual.renderSlots) {
-        const field = visual.editableTextFields.find((item) => item.id === slot.fieldId);
-        const expected = field?.defaultValue ?? "";
-        if (!expected) continue;
-
-        // stacked 样式会把文字拆成两行绘制，逐字符核对更稳
-        const joined = filledText.join("");
-        for (const char of expected.replace(/\s/g, "")) {
-          expect(joined, `${visualKey}/${slot.fieldId} 的「${expected}」未画出`).toContain(char);
-        }
-      }
+      expect(filledText).not.toContain("iDevflow");
+      expect(filledText).not.toContain("测试用例");
     }
   );
 });
@@ -315,11 +273,7 @@ describe("renderPoster 两种模式都能画出标题", () => {
   });
 });
 
-/**
- * 深浅两版此前是两套复制的绘制函数，现在由 theme 驱动同一套代码。
- * 这组用例锁住"合并没有把两版拉平"——差异必须还在。
- */
-describe("theme 合并后两版海报的差异仍然保留", () => {
+describe("AI 版沿用布局并呈现参考图的深蓝科技视觉", () => {
   const withNotice = { notice: "让您专注于业务创造" };
 
   function render(mode: PosterMode) {
@@ -334,71 +288,73 @@ describe("theme 合并后两版海报的差异仍然保留", () => {
     return recording;
   }
 
-  it("主标题配色两版不同", () => {
+  it("AI 主标题使用渐变，普通版仍是纯蓝色", () => {
     const feature = render("feature").textDraws.find((d) => d.text === "代码在线编辑");
-    const ai = render("ai").textDraws.find((d) => d.text === "代码在线编辑");
+    const aiRecording = render("ai");
+    const ai = aiRecording.textDraws.find((d) => d.text === "代码在线编辑");
 
     expect(feature?.fillStyle).toBe("#2180f7");
-    expect(ai?.fillStyle).toBe("#ffffff");
+    expect(ai?.fillStyle).toHaveProperty("__gradient", true);
+    expect(aiRecording.gradients.some((g) => g.stops.includes("#52e3dd"))).toBe(true);
   });
 
-  it("强调标题：浅色版纯色，深色版渐变", () => {
+  it("强调标题在 AI 版使用白色", () => {
     const feature = render("feature");
     const ai = render("ai");
 
     expect(feature.textDraws.find((d) => d.text === "功能发布")?.fillStyle).toBe("#0c1f75");
-    // 深色版用渐变对象填充，且色标就是主题里那三个
-    expect(ai.textDraws.find((d) => d.text === "功能发布")?.fillStyle).toHaveProperty(
-      "__gradient",
-      true
-    );
-    expect(ai.gradients.some((g) => g.stops.includes("#7026f4"))).toBe(true);
+    expect(ai.textDraws.find((d) => d.text === "功能发布")?.fillStyle).toBe("#ffffff");
   });
 
-  it("功能点描述配色两版不同", () => {
+  it("AI 参考图不绘制功能点列表", () => {
     const feature = render("feature").textDraws.find((d) => d.text.includes("标签化管理"));
     const ai = render("ai").textDraws.find((d) => d.text.includes("标签化管理"));
 
     expect(feature?.fillStyle).toBe("#324e7b");
-    expect(ai?.fillStyle).toBe("rgba(255, 255, 255, 0.7)");
+    expect(ai).toBeUndefined();
   });
 
-  it("提示语：浅色版带心形徽标，深色版只有文字", () => {
-    expect(render("feature").filledText).toContain("♥");
-    expect(render("ai").filledText).not.toContain("♥");
+  it("提示语：普通版带心形徽标，AI 版从左侧直接绘制白字", () => {
+    const feature = render("feature");
+    const ai = render("ai");
+
+    expect(feature.filledText).toContain("♥");
+    expect(ai.filledText).not.toContain("♥");
+    expect(ai.textDraws.find((d) => d.text === withNotice.notice)).toMatchObject({
+      fillStyle: "#ffffff",
+      x: 160
+    });
   });
 
-  it("底部标语只在深色版出现", () => {
+  it("参考图不绘制额外英文底部标语", () => {
     const hasTagline = (texts: string[]) => texts.some((t) => t.includes("GLOBAL PERSPECTIVE"));
 
-    expect(hasTagline(render("ai").filledText)).toBe(true);
+    expect(hasTagline(render("ai").filledText)).toBe(false);
     expect(hasTagline(render("feature").filledText)).toBe(false);
   });
 
-  it("Logo 两版用不同素材，深色版保持原始比例", () => {
+  it("AI 版使用参考图提供的白色品牌 Logo", () => {
     const featureLogo = render("feature").drawImageCalls.find((c) => c.image.id === "logo");
     const aiLogo = render("ai").drawImageCalls.find((c) => c.image.id === "logoAi");
 
     expect(featureLogo).toMatchObject({ w: 1495, h: 200 });
-    // logoAi 原始 660x208，高度对齐到 200 后宽度应约 635，而不是被拉成 1495
-    expect(aiLogo?.h).toBe(200);
-    expect(aiLogo?.w).toBeCloseTo(Math.round(660 * (200 / 208)), 0);
+    expect(aiLogo).toMatchObject({ w: 1495, h: 200 });
   });
 
-  it("背景：浅色版贴图，深色版渐变", () => {
+  it("两版使用各自的背景贴图", () => {
     const feature = render("feature");
     const ai = render("ai");
 
     expect(feature.drawImageCalls.some((c) => c.image.id === "featureBg")).toBe(true);
+    expect(ai.drawImageCalls.some((c) => c.image.id === "aiBg")).toBe(true);
     expect(ai.drawImageCalls.some((c) => c.image.id === "featureBg")).toBe(false);
-    expect(ai.gradients.some((g) => g.stops.includes("#0a0e27"))).toBe(true);
   });
 
-  it("两版的产品标签位置一致——布局本就该共用", () => {
-    const pick = (mode: PosterMode) =>
-      render(mode).drawImageCalls.find((c) => c.image.id === "productBadge");
+  it("AI 版使用紫色标签，位置仍与普通版一致", () => {
+    const feature = render("feature").drawImageCalls.find((c) => c.image.id === "productBadge");
+    const ai = render("ai").drawImageCalls.find((c) => c.image.id === "aiProductBadge");
 
-    expect(pick("feature")).toMatchObject({ x: 160, y: 470, w: 585, h: 198 });
-    expect(pick("ai")).toMatchObject({ x: 160, y: 470, w: 585, h: 198 });
+    expect(feature).toMatchObject({ x: 160, y: 470, w: 585, h: 198 });
+    expect(ai).toMatchObject({ x: 160, y: 470, w: 585, h: 198 });
   });
 });

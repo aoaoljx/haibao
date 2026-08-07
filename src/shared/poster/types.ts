@@ -12,10 +12,6 @@ export type VisualSelection = VisualKey | "auto";
 /** 右侧图形从哪里来。渲染层与编辑器共用，因此放在领域类型里。 */
 export type GraphicSource = "ai" | "library" | "upload";
 
-export type TextAlign = "left" | "center" | "right";
-
-export type TextAnchor = "baseline" | "center";
-
 export interface PosterCopy {
   titleBlue: string;
   titleDark?: string;
@@ -31,25 +27,6 @@ export interface VisualBounds {
   h: number;
 }
 
-export interface VisualTextField {
-  id: string;
-  label: string;
-  role: "brand" | "action" | "card" | "status" | "badge" | "title";
-  defaultValue: string;
-  maxLength?: number;
-}
-
-export interface VisualTextRenderSlot {
-  fieldId: string;
-  x: number;
-  y: number;
-  anchor: TextAnchor;
-  fontSize: number;
-  maxWidth: number;
-  align: TextAlign;
-  styleToken: string;
-}
-
 export interface VisualAsset {
   key: VisualKey;
   name: string;
@@ -62,8 +39,6 @@ export interface VisualAsset {
     height: number;
   };
   posterBounds: VisualBounds;
-  editableTextFields: VisualTextField[];
-  renderSlots: VisualTextRenderSlot[];
 }
 
 export interface VisualMapping {
@@ -79,5 +54,3 @@ export interface VisualMapping {
   fallback: Record<PosterMode, VisualKey>;
   visuals: VisualAsset[];
 }
-
-export type VisualTextValueMap = Record<string, string>;

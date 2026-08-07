@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildVisualPrompt } from "./promptBuilder";
-import { BASE_NEGATIVE_PROMPT } from "./basePrompt";
+import { BASE_NEGATIVE_PROMPT, FEATURE_LIBRARY_STYLE_PROMPT } from "./basePrompt";
 
 const INPUT = {
   mode: "feature" as const,
@@ -55,11 +55,42 @@ describe("Prompt 的其它约束没被破坏", () => {
     expect(built.prompt).toContain(built.sceneName);
   });
 
-  it("图形文字只作为留白规划，不要求模型生成可读文字", () => {
-    const { prompt } = buildVisualPrompt({
-      ...INPUT,
-      graphicText: { topText: "iDevflow", buttonText: "提交" }
-    });
-    expect(prompt).toContain("不要直接生成可读文字");
+  it("图形内部明确禁止生成文字、Logo 和水印", () => {
+    const { prompt } = buildVisualPrompt(INPUT);
+    expect(prompt).toContain("图形内部不得生成可读文字、字母、Logo 或水印");
+  });
+});
+
+describe("正常功能发布固定图库风格", () => {
+  it("feature 模式始终注入从五张图库素材归纳的完整固定风格", () => {
+    const { prompt } = buildVisualPrompt(INPUT);
+
+    expect(prompt).toContain("【正常功能发布固定图库风格】");
+    expect(prompt).toContain(FEATURE_LIBRARY_STYLE_PROMPT);
+    for (const characteristic of [
+      "2.5D 轻等距产品图标",
+      "半透明玻璃和亚克力材质",
+      "白色、冰蓝、天蓝和钴蓝渐变",
+      "一个完整且易识别的核心主体",
+      "纯白空白"
+    ]) {
+      expect(prompt).toContain(characteristic);
+    }
+  });
+
+  it("不同业务场景只改变画什么，不会丢掉固定视觉风格", () => {
+    const code = buildVisualPrompt({ ...INPUT, sceneKey: "code" });
+    const login = buildVisualPrompt({ ...INPUT, sceneKey: "login" });
+
+    expect(code.sceneKey).not.toBe(login.sceneKey);
+    expect(code.prompt).toContain(FEATURE_LIBRARY_STYLE_PROMPT);
+    expect(login.prompt).toContain(FEATURE_LIBRARY_STYLE_PROMPT);
+  });
+
+  it("AI 功能发布模式不注入正常功能发布的图库风格块", () => {
+    const { prompt } = buildVisualPrompt({ ...INPUT, mode: "ai" });
+
+    expect(prompt).not.toContain("【正常功能发布固定图库风格】");
+    expect(prompt).not.toContain(FEATURE_LIBRARY_STYLE_PROMPT);
   });
 });

@@ -1,5 +1,4 @@
 import type { GenerateImageResult, ImageProviderConfig } from "../../../providers";
-import type { PromptGraphicText } from "../../../prompt/promptBuilder";
 import type { PromptSceneKey } from "../../../prompt/scenePrompt";
 import type { PosterMode, VisualBounds } from "../../shared/poster/types";
 
@@ -9,7 +8,6 @@ export interface VisualGenerationInput {
   titleDark?: string;
   featurePoints: readonly string[];
   keywords?: string;
-  graphicText?: PromptGraphicText;
   /**
    * 生成的图形最终要落进的海报槽位。用来反推请求尺寸，让生成比例贴近绘制比例。
    * 不传则按槽位的典型比例兜底。

@@ -1,6 +1,4 @@
 import type { PosterEditorState } from "../hooks/usePosterEditor";
-import { graphicTextValue } from "@/shared/poster/graphicText";
-import { getVisualByKey } from "@/shared/poster/visualMapping";
 import {
   configuredProviders,
   getImageProviderDefinition,
@@ -22,7 +20,6 @@ interface EditorPanelProps {
   onUploadedFileChange: (file: File | null) => void;
   onKeywordsChange: (value: string) => void;
   onProviderChange: (provider: ImageProviderId) => void;
-  onGraphicTextFieldChange: (fieldId: string, value: string) => void;
   onRemoveBackgroundChange: (value: boolean) => void;
   onGenerateVisual: () => void;
 }
@@ -58,14 +55,10 @@ export function EditorPanel({
   onUploadedFileChange,
   onKeywordsChange,
   onProviderChange,
-  onGraphicTextFieldChange,
   onRemoveBackgroundChange,
   onGenerateVisual
 }: EditorPanelProps) {
   const providerDefinition = getImageProviderDefinition(state.providerConfig.provider);
-  const activeVisual = getVisualByKey(state.visualKey);
-  const activeValues = state.graphicText[state.visualKey];
-
   return (
     <aside className="panel">
       <div className="panel-section">
@@ -270,30 +263,6 @@ export function EditorPanel({
         ) : null}
       </div>
 
-      <div className="panel-section">
-        <h2>图形文字</h2>
-        {state.graphicSource === "library" ? (
-          activeVisual.editableTextFields.length ? (
-            activeVisual.editableTextFields.map((field) => (
-              <label key={field.id}>
-                {field.label}
-                <input
-                  value={graphicTextValue(activeVisual, activeValues, field.id)}
-                  maxLength={field.maxLength}
-                  onChange={(event) => onGraphicTextFieldChange(field.id, event.target.value)}
-                />
-              </label>
-            ))
-          ) : (
-            <p className="field-hint">当前图形没有可编辑的文字槽位。</p>
-          )
-        ) : (
-          <p className="field-hint">
-            图形文字只能叠加在素材图库的图形上——文字位置是按那几张素材逐个标定的，
-            套到 AI 生成图或上传图上会错位。切换到「素材图库」即可编辑。
-          </p>
-        )}
-      </div>
     </aside>
   );
 }

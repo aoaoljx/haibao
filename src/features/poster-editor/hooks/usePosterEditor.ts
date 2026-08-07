@@ -10,27 +10,21 @@ import {
 } from "@providers";
 import {
   clonePosterCopy,
-  createDefaultGraphicTextState,
   posterPresets
 } from "@/shared/poster/defaults";
-import { toPromptTextSlots } from "@/shared/poster/graphicText";
 import { getVisualByKey, visualMapping } from "@/shared/poster/visualMapping";
 import type {
   GraphicSource,
   PosterCopy,
   PosterMode,
-  VisualKey,
-  VisualTextValueMap
+  VisualKey
 } from "@/shared/poster/types";
 import { generateVisualImage, type VisualGenerationTrace } from "@/services/visual-generation";
-
-type GraphicTextByMode = Record<PosterMode, Record<VisualKey, VisualTextValueMap>>;
 
 export interface PosterEditorState {
   mode: PosterMode;
   copy: PosterCopy;
   visualKey: VisualKey;
-  graphicText: Record<VisualKey, VisualTextValueMap>;
   graphicSource: GraphicSource;
   libraryVisualKey: VisualKey;
   uploadedFileName: string;
@@ -80,13 +74,9 @@ export function usePosterEditor() {
   const [mode, setMode] = useState<PosterMode>("feature");
   const [copy, setCopy] = useState<PosterCopy>(() => clonePosterCopy(posterPresets.feature.copy));
   const [visualKey, setVisualKey] = useState<VisualKey>("graphic1");
-  const [graphicTextByMode, setGraphicTextByMode] = useState<GraphicTextByMode>(() => ({
-    feature: createDefaultGraphicTextState(),
-    ai: createDefaultGraphicTextState()
-  }));
   const [graphicSourceByMode, setGraphicSourceByMode] = useState<Record<PosterMode, GraphicSource>>(
     {
-      feature: "ai",
+      feature: "library",
       ai: "ai"
     }
   );
@@ -164,7 +154,6 @@ export function usePosterEditor() {
       mode,
       copy,
       visualKey,
-      graphicText: graphicTextByMode[mode],
       graphicSource: graphicSourceByMode[mode],
       libraryVisualKey: libraryVisualByMode[mode],
       uploadedFileName: uploadedFileNameByMode[mode],
@@ -182,7 +171,6 @@ export function usePosterEditor() {
     [
       copy,
       graphicSourceByMode,
-      graphicTextByMode,
       keywordTouchedByMode,
       keywordsByMode,
       libraryVisualByMode,
@@ -338,29 +326,6 @@ export function usePosterEditor() {
     setStatusKind("");
   }, []);
 
-  /**
-   * 修改当前图形的某个文字槽位。
-   *
-   * 这里是图形文字的唯一真相源：画布和 Prompt 都读它。
-   * 此前存在两份互不相通的 state——面板改的那份只喂 Prompt，
-   * 画布读的那份没有 setter 永远是默认值，于是"改了看不到变化"。
-   */
-  const updateGraphicTextField = useCallback(
-    (fieldId: string, value: string) => {
-      setGraphicTextByMode((current) => ({
-        ...current,
-        [mode]: {
-          ...current[mode],
-          [visualKey]: {
-            ...current[mode][visualKey],
-            [fieldId]: value
-          }
-        }
-      }));
-    },
-    [mode, visualKey]
-  );
-
   const generateVisual = useCallback(async () => {
     if (isGenerating) return;
 
@@ -387,11 +352,6 @@ export function usePosterEditor() {
         titleDark: copy.titleDark,
         featurePoints: copy.featurePoints,
         keywords: currentKeywords,
-        // 把当前图形的各字段折算成 Prompt 需要的四类槽位
-        graphicText: toPromptTextSlots(
-          getVisualByKey(visualKey),
-          graphicTextByMode[mode][visualKey]
-        ),
         // 按图形最终要落进的槽位反推请求尺寸，避免生成方图后被拉伸
         targetBounds: getVisualByKey(visualKey).posterBounds,
         removeBackground,
@@ -443,7 +403,6 @@ export function usePosterEditor() {
     keywordTouchedByMode,
     keywordsByMode,
     copy,
-    graphicTextByMode,
     visualKey,
     removeBackground
   ]);
@@ -466,7 +425,6 @@ export function usePosterEditor() {
     updateUploadedFile,
     updateKeywords,
     updateProvider,
-    updateGraphicTextField,
     updateRemoveBackground: setRemoveBackground,
     generateVisual,
     setStatus
