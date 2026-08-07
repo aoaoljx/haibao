@@ -104,6 +104,31 @@ async function mountEditor() {
   await waitFor(() => expect(renderPosterSpy).toHaveBeenCalled());
 }
 
+async function selectAiSource() {
+  await act(async () => {
+    screen.getByRole("radio", { name: "AI自动生成" }).click();
+  });
+}
+
+describe("默认图形来源", () => {
+  it("首次进入页面默认选中素材图库的图形一", async () => {
+    await mountEditor();
+
+    expect((screen.getByRole("radio", { name: "素材图库" }) as HTMLInputElement).checked).toBe(
+      true
+    );
+    expect(lastRenderInput()?.graphicSource).toBe("library");
+    expect(lastRenderInput()?.visualKey).toBe("graphic1");
+  });
+
+  it("左侧不再显示图形文字区域", async () => {
+    await mountEditor();
+
+    expect(screen.queryByRole("heading", { name: "图形文字" })).toBeNull();
+    expect(screen.queryByText("当前图形没有可编辑的文字槽位。")).toBeNull();
+  });
+});
+
 describe("AI 生成后画布要显示那张图", () => {
   it("生成成功后，renderPoster 拿到 AI 图且来源为 ai", async () => {
     generateVisualImageSpy.mockResolvedValue({
@@ -113,6 +138,7 @@ describe("AI 生成后画布要显示那张图", () => {
     });
 
     await mountEditor();
+    await selectAiSource();
 
     // 生成前：画布上没有 AI 图
     expect(lastRenderInput()?.aiGeneratedImage).toBeNull();
@@ -127,6 +153,7 @@ describe("AI 生成后画布要显示那张图", () => {
       expect(input?.graphicSource).toBe("ai");
       expect(input?.aiGeneratedImage).toBeTruthy();
     });
+    expect(generateVisualImageSpy.mock.calls[0]?.[0]).not.toHaveProperty("graphicText");
   });
 
   /**
@@ -156,6 +183,7 @@ describe("AI 生成后画布要显示那张图", () => {
       .mockResolvedValueOnce(makeResult(second));
 
     await mountEditor();
+    await selectAiSource();
     const button = screen.getByRole("button", { name: /生成图形/ });
 
     await act(async () => {
@@ -179,6 +207,7 @@ describe("AI 生成后画布要显示那张图", () => {
     generateVisualImageSpy.mockRejectedValue(new Error("模型炸了"));
 
     await mountEditor();
+    await selectAiSource();
     const before = lastRenderInput();
 
     await act(async () => {
